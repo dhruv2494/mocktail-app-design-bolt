@@ -173,7 +173,7 @@ export default function PDFsScreen() {
             <View style={styles.pdfHeader}>
               <View style={styles.pdfHeaderLeft}>
                 <View style={styles.pdfIconContainer}>
-                  <FileText size={24} color={Colors.yellow600} />
+                  <FileText size={24} color={Colors.primaryLight} />
                 </View>
                 <View style={styles.pdfInfo}>
                   <Text style={styles.pdfTitle}>{pdf.title}</Text>
@@ -364,7 +364,7 @@ const styles = StyleSheet.create({
   pdfIconContainer: {
     width: 48,
     height: 48,
-    backgroundColor: Colors.badgeDangerBg,
+    backgroundColor: Colors.chip,
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
@@ -485,7 +485,9 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primaryLight,
   },
   premiumDownloadButton: {
+    flex: 0,
     backgroundColor: Colors.warning,
+    width: '60%',
   },
   downloadButtonText: {
     fontSize: 14,

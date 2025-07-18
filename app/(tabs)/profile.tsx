@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { User, Settings, Bell, Shield, CircleHelp as HelpCircle, LogOut, ChevronRight, Trophy, BookOpen, Clock, Target, Star, Download, Globe, Moon } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
+import { Colors } from '@/theme';
 
 export default function ProfileScreen() {
   const [notificationsEnabled, setNotificationsEnabled] = React.useState(true);
@@ -90,7 +91,7 @@ export default function ProfileScreen() {
 
   const handleLogout = () => {
     // Handle logout logic
-    router.push('/auth/login');
+    router.push('/(auth)/login');
     console.log('Logging out...');
   };
 
@@ -99,7 +100,7 @@ export default function ProfileScreen() {
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Profile Header */}
         <LinearGradient
-          colors={['#3B82F6', '#1D4ED8']}
+          colors={[Colors.primaryLight, Colors.primary]}
           style={styles.profileHeader}
         >
           <View style={styles.profileInfo}>
@@ -115,7 +116,7 @@ export default function ProfileScreen() {
           </View>
           
           <TouchableOpacity style={styles.editButton}>
-            <Settings size={20} color="#FFFFFF" />
+            <Settings size={20} color={Colors.white} />
           </TouchableOpacity>
         </LinearGradient>
 
@@ -123,19 +124,19 @@ export default function ProfileScreen() {
         <View style={styles.statsContainer}>
           <View style={styles.statsGrid}>
             <View style={styles.statCard}>
-              <BookOpen size={24} color="#3B82F6" />
+              <BookOpen size={24} color={Colors.primaryLight} />
               <Text style={styles.statNumber}>{userStats.testsCompleted}</Text>
               <Text style={styles.statLabel}>Tests Completed</Text>
             </View>
             
             <View style={styles.statCard}>
-              <Trophy size={24} color="#F59E0B" />
+              <Trophy size={24} color={Colors.warning} />
               <Text style={styles.statNumber}>#{userStats.rank}</Text>
               <Text style={styles.statLabel}>Current Rank</Text>
             </View>
             
             <View style={styles.statCard}>
-              <Target size={24} color="#10B981" />
+              <Target size={24} color={Colors.success} />
               <Text style={styles.statNumber}>{userStats.averageScore}%</Text>
               <Text style={styles.statLabel}>Average Score</Text>
             </View>
@@ -151,7 +152,7 @@ export default function ProfileScreen() {
         {/* Achievements */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Achievements</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.achievementContainer} >
             {achievements.map((achievement) => (
               <View 
                 key={achievement.id} 
@@ -238,7 +239,7 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: Colors.background,
   },
   profileHeader: {
     flexDirection: 'row',
@@ -246,6 +247,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
     paddingTop: 40,
+    backgroundColor: Colors.primary,
   },
   profileInfo: {
     flexDirection: 'row',
@@ -258,7 +260,7 @@ const styles = StyleSheet.create({
     borderRadius: 40,
     marginRight: 16,
     borderWidth: 3,
-    borderColor: '#FFFFFF',
+    borderColor: Colors.white,
   },
   profileDetails: {
     flex: 1,
@@ -266,18 +268,18 @@ const styles = StyleSheet.create({
   profileName: {
     fontSize: 24,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: Colors.white,
     marginBottom: 4,
   },
   profileEmail: {
     fontSize: 14,
-    color: '#FFFFFF',
+    color: Colors.white,
     opacity: 0.9,
     marginBottom: 2,
   },
   profileJoined: {
     fontSize: 12,
-    color: '#FFFFFF',
+    color: Colors.white,
     opacity: 0.7,
   },
   editButton: {
@@ -293,11 +295,11 @@ const styles = StyleSheet.create({
   },
   statCard: {
     width: '47%',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.cardBackground,
     padding: 16,
     borderRadius: 12,
     alignItems: 'center',
-    shadowColor: '#000',
+    shadowColor: Colors.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -306,13 +308,13 @@ const styles = StyleSheet.create({
   statNumber: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#111827',
+    color: Colors.textPrimary,
     marginTop: 8,
     marginBottom: 4,
   },
   statLabel: {
     fontSize: 12,
-    color: '#6B7280',
+    color: Colors.textSubtle,
     textAlign: 'center',
   },
   section: {
@@ -322,17 +324,17 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#111827',
+    color: Colors.textPrimary,
     marginBottom: 16,
   },
   achievementCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.cardBackground,
     padding: 16,
     borderRadius: 12,
     alignItems: 'center',
     marginRight: 12,
     width: 100,
-    shadowColor: '#000',
+    shadowColor: Colors.shadow,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 2,
@@ -350,26 +352,29 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   achievementIconLocked: {
-    backgroundColor: '#F3F4F6',
+    backgroundColor: Colors.light,
+  },
+  achievementContainer: {
+   paddingBottom: 24,
   },
   achievementTitle: {
     fontSize: 12,
     fontWeight: '500',
-    color: '#111827',
+    color: Colors.textPrimary,
     textAlign: 'center',
   },
   achievementTitleLocked: {
-    color: '#9CA3AF',
+    color: Colors.gray400,
   },
   menuItem: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.cardBackground,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 16,
     borderRadius: 12,
     marginBottom: 8,
-    shadowColor: '#000',
+    shadowColor: Colors.shadow,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 2,
@@ -383,7 +388,7 @@ const styles = StyleSheet.create({
   menuIconContainer: {
     width: 40,
     height: 40,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: Colors.light,
     borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
@@ -395,35 +400,35 @@ const styles = StyleSheet.create({
   menuItemTitle: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#111827',
+    color: Colors.textPrimary,
     marginBottom: 2,
   },
   menuItemDescription: {
     fontSize: 12,
-    color: '#6B7280',
+    color: Colors.textSubtle,
   },
   menuItemRight: {
     alignItems: 'center',
   },
   menuItemRightText: {
     fontSize: 14,
-    color: '#6B7280',
+    color: Colors.textSubtle,
     marginRight: 8,
   },
   logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.cardBackground,
     padding: 16,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#FEE2E2',
+    borderColor: Colors.badgeDangerBg,
   },
   logoutText: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#DC2626',
+    color: Colors.danger,
     marginLeft: 8,
   },
   versionContainer: {
@@ -432,6 +437,6 @@ const styles = StyleSheet.create({
   },
   versionText: {
     fontSize: 12,
-    color: '#9CA3AF',
+    color: Colors.gray400,
   },
 });

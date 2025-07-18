@@ -8,6 +8,7 @@ export const Colors = {
 
   primary: '#0A1F66',
   primaryLight: '#3A5DAE',
+  primaryExtraLight: '#7C95D6',
   accent: '#1D8A9E',
   background: '#F9FAFB',
   cardBackground: '#FFFFFF',

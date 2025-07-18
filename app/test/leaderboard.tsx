@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Trophy, Medal, Award, TrendingUp, Calendar, ChevronLeft, Crown } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
+import { Colors } from '@/theme';
 
 export default function TestLeaderboardScreen() {
   const [selectedPeriod, setSelectedPeriod] = useState('This Test');
@@ -116,11 +117,11 @@ export default function TestLeaderboardScreen() {
   const getRankIcon = (rank: number) => {
     switch (rank) {
       case 1:
-        return <Crown size={24} color="#FFD700" />;
+        return <Crown size={24} color={Colors.premiumText} />;
       case 2:
-        return <Medal size={24} color="#C0C0C0" />;
+        return <Medal size={24} color={Colors.premiumBadge} />;
       case 3:
-        return <Award size={24} color="#CD7F32" />;
+        return <Award size={24} color={Colors.premiumText} />;
       default:
         return <Text style={styles.rankNumber}>{rank}</Text>;
     }
@@ -134,21 +135,21 @@ export default function TestLeaderboardScreen() {
           style={styles.backButton}
           onPress={() => router.back()}
         >
-          <ChevronLeft size={24} color="#374151" />
+          <ChevronLeft size={24} color={Colors.textSubtle} />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
           <Text style={styles.headerTitle}>Leaderboard</Text>
           <Text style={styles.headerSubtitle}>{testInfo.title}</Text>
         </View>
         <TouchableOpacity style={styles.calendarButton}>
-          <Calendar size={20} color="#374151" />
+          <Calendar size={20} color={Colors.textSubtle} />
         </TouchableOpacity>
       </View>
 
       {/* Test Stats */}
       <View style={styles.statsContainer}>
         <LinearGradient
-          colors={['#FF6B35', '#F7931E']}
+          colors={[Colors.primary, Colors.primaryLight]}
           style={styles.statsCard}
         >
           <View style={styles.statsGrid}>
@@ -201,11 +202,11 @@ export default function TestLeaderboardScreen() {
             {/* 2nd Place */}
             <View style={styles.podiumItem}>
               <LinearGradient
-                colors={['#E5E7EB', '#9CA3AF']}
+                colors={[Colors.primary, Colors.accent]}
                 style={[styles.podiumRank, styles.secondPlace]}
               >
                 <Image source={{ uri: topPerformers[1].avatar }} style={styles.podiumAvatar} />
-                <Medal size={20} color="#C0C0C0" />
+                <Medal size={20} color={Colors.premiumBadge} />
               </LinearGradient>
               <Text style={styles.podiumName}>{topPerformers[1].name}</Text>
               <Text style={styles.podiumScore}>{topPerformers[1].score}%</Text>
@@ -215,11 +216,11 @@ export default function TestLeaderboardScreen() {
             {/* 1st Place */}
             <View style={[styles.podiumItem, styles.firstPlaceItem]}>
               <LinearGradient
-                colors={['#FEF3C7', '#F59E0B']}
+                colors={[Colors.primary, Colors.chip]}
                 style={[styles.podiumRank, styles.firstPlace]}
               >
                 <Image source={{ uri: topPerformers[0].avatar }} style={styles.podiumAvatar} />
-                <Crown size={24} color="#FFD700" />
+                <Crown size={24} color={Colors.premiumText} />
               </LinearGradient>
               <Text style={styles.podiumName}>{topPerformers[0].name}</Text>
               <Text style={styles.podiumScore}>{topPerformers[0].score}%</Text>
@@ -229,11 +230,11 @@ export default function TestLeaderboardScreen() {
             {/* 3rd Place */}
             <View style={styles.podiumItem}>
               <LinearGradient
-                colors={['#FED7AA', '#F97316']}
+                colors={[Colors.primary, Colors.textLink]}
                 style={[styles.podiumRank, styles.thirdPlace]}
               >
                 <Image source={{ uri: topPerformers[2].avatar }} style={styles.podiumAvatar} />
-                <Award size={20} color="#CD7F32" />
+                <Award size={20} color={Colors.primaryLight} />
               </LinearGradient>
               <Text style={styles.podiumName}>{topPerformers[2].name}</Text>
               <Text style={styles.podiumScore}>{topPerformers[2].score}%</Text>
@@ -246,7 +247,7 @@ export default function TestLeaderboardScreen() {
         <View style={styles.yourRankContainer}>
           <Text style={styles.sectionTitle}>Your Performance</Text>
           <LinearGradient
-            colors={['#FFF4ED', '#FFFFFF']}
+            colors={[Colors.primaryExtraLight, Colors.white]}
             style={styles.yourRankCard}
           >
             <View style={styles.rankInfo}>
@@ -262,10 +263,7 @@ export default function TestLeaderboardScreen() {
             </View>
             <View style={styles.scoreInfo}>
               <Text style={styles.userScore}>{currentUserRank.score}%</Text>
-              <View style={styles.percentileContainer}>
-                <TrendingUp size={12} color="#FF6B35" />
-                <Text style={styles.percentileText}>{currentUserRank.percentile}th percentile</Text>
-              </View>
+
             </View>
           </LinearGradient>
         </View>
@@ -367,16 +365,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: Colors.chip,
     marginRight: 12,
   },
   periodChipActive: {
-    backgroundColor: '#FF6B35',
+    backgroundColor: Colors.primary,
   },
   periodText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#6B7280',
+    color: Colors.textSubtle,
   },
   periodTextActive: {
     color: '#FFFFFF',
@@ -388,7 +386,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#111827',
+    color: Colors.textPrimary,
     marginBottom: 16,
   },
   podiumContainer: {
@@ -434,19 +432,19 @@ const styles = StyleSheet.create({
   podiumName: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#111827',
+    color: Colors.textPrimary,
     textAlign: 'center',
     marginBottom: 4,
   },
   podiumScore: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#FF6B35',
+    color: Colors.textLink,
     marginBottom: 2,
   },
   podiumTime: {
     fontSize: 12,
-    color: '#6B7280',
+    color: Colors.textSubtle,
   },
   yourRankContainer: {
     paddingHorizontal: 20,
@@ -459,14 +457,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#FF6B35',
+    borderColor: Colors.primary,
   },
   leaderboardContainer: {
     paddingHorizontal: 20,
     paddingBottom: 24,
   },
   leaderboardItem: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.cardBackground,
     borderRadius: 12,
     padding: 16,
     marginBottom: 8,
@@ -488,7 +486,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: Colors.chip,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -496,7 +494,7 @@ const styles = StyleSheet.create({
   rankNumber: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#374151',
+    color: Colors.textSubtle,
   },
   userAvatar: {
     width: 40,
@@ -510,12 +508,12 @@ const styles = StyleSheet.create({
   userName: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#111827',
+    color: Colors.textPrimary,
     marginBottom: 2,
   },
   userStats: {
     fontSize: 12,
-    color: '#6B7280',
+    color: Colors.textSubtle,
   },
   scoreInfo: {
     alignItems: 'flex-end',
@@ -523,7 +521,7 @@ const styles = StyleSheet.create({
   userScore: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#FF6B35',
+    color: Colors.textLink,
     marginBottom: 2,
   },
   percentileContainer: {
@@ -533,7 +531,7 @@ const styles = StyleSheet.create({
   percentileText: {
     fontSize: 12,
     fontWeight: '500',
-    color: '#FF6B35',
+    color: Colors.textSubtle,
     marginLeft: 2,
   },
 });

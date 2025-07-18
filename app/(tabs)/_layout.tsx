@@ -1,3 +1,4 @@
+import { Colors } from '@/theme';
 import { Tabs } from 'expo-router';
 import { Chrome as Home, BookOpen, User, FileText } from 'lucide-react-native';
 
@@ -6,12 +7,12 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: '#FF6B35',
-        tabBarInactiveTintColor: '#6B7280',
+        tabBarActiveTintColor: Colors.textLink,
+        tabBarInactiveTintColor: Colors.textSubtle,
         tabBarStyle: {
-          backgroundColor: '#FFFFFF',
+          backgroundColor: Colors.background,
           borderTopWidth: 1,
-          borderTopColor: '#E5E7EB',
+          borderTopColor: Colors.muted,
           paddingBottom: 5,
           paddingTop: 5,
           height: 60,
@@ -45,7 +46,7 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="profile"c
+        name="profile"
         options={{
           title: 'Profile',
           tabBarIcon: ({ size, color }) => (

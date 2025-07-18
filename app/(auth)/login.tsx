@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Alert, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Mail, Lock, Eye, EyeOff, Phone } from 'lucide-react-native';
 import { router } from 'expo-router';
-
+import logo from '@/assets/images/MockTale.jpg';
 export default function LoginScreen() {
   const [loginMethod, setLoginMethod] = useState<'email' | 'phone'>('email');
   const [email, setEmail] = useState('');
@@ -39,11 +39,11 @@ export default function LoginScreen() {
   };
 
   const handleForgotPassword = () => {
-    router.push('/auth/forgot-password');
+    router.push('/(auth)/forgot-password');
   };
 
   const handleSignUp = () => {
-    router.push('/auth/signup');
+    router.push('/(auth)/signup');
   };
 
   return (
@@ -58,7 +58,11 @@ export default function LoginScreen() {
             colors={['#3B82F6', '#1D4ED8']}
             style={styles.logoContainer}
           >
-            <Text style={styles.logoText}>EduQuiz</Text>
+            {/* <Text style={styles.logoText}>EduQuiz</Text> */}
+            <Image
+              source={logo}
+              style={styles.logoText}
+            />
           </LinearGradient>
           <Text style={styles.welcomeText}>Welcome Back!</Text>
           <Text style={styles.subtitleText}>Sign in to continue your learning journey</Text>
@@ -207,6 +211,9 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: '700',
     color: '#FFFFFF',
+    width: 100,
+    height: 100,
+    borderRadius: 50,
   },
   welcomeText: {
     fontSize: 28,

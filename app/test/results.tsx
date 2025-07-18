@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Trophy, Clock, Target, TrendingUp, ChevronRight, Award, Users, BookOpen, CircleCheck as CheckCircle, Circle as XCircle, CircleAlert as AlertCircle } from 'lucide-react-native';
 import { router } from 'expo-router';
+import { Colors } from '@/theme';
 
 const { width } = Dimensions.get('window');
 
@@ -57,9 +58,8 @@ export default function TestResultsScreen() {
   };
 
   const getPerformanceColor = (percentage: number) => {
-    if (percentage >= 80) return '#10B981';
-    if (percentage >= 60) return '#F59E0B';
-    return '#EF4444';
+    // Home screen does not use colored badges, so always use Colors.primaryLight for highlights
+    return Colors.primaryLight;
   };
 
   const getPerformanceText = (percentage: number) => {
@@ -84,7 +84,7 @@ export default function TestResultsScreen() {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <LinearGradient
-        colors={['#FF6B35', '#F7931E']}
+        colors={[Colors.primary, Colors.primaryLight]}
         style={styles.header}
       >
         <View style={styles.headerContent}>
@@ -101,10 +101,10 @@ export default function TestResultsScreen() {
       {/* Performance Badge */}
       <View style={styles.performanceBadge}>
         <LinearGradient
-          colors={[getPerformanceColor(testResult.percentage), getPerformanceColor(testResult.percentage) + '80']}
+          colors={[Colors.primary, Colors.primaryLight]}
           style={styles.performanceGradient}
         >
-          <Award size={24} color="#FFFFFF" />
+          <Award size={24} color={Colors.white} />
           <Text style={styles.performanceText}>{getPerformanceText(testResult.percentage)}</Text>
         </LinearGradient>
       </View>
@@ -158,34 +158,30 @@ export default function TestResultsScreen() {
               <View style={styles.detailCard}>
                 <View style={styles.detailRow}>
                   <View style={styles.detailItem}>
-                    <Trophy size={20} color="#FF6B35" />
-                    <Text style={styles.detailLabel}>Rank</Text>
+                    <CheckCircle size={20} color={Colors.primaryLight} />
+                    <Text style={styles.detailLabel}>Correct Answers</Text>
                   </View>
-                  <Text style={styles.detailValue}>{testResult.rank} / {testResult.totalParticipants}</Text>
+                  <Text style={styles.detailValue}>{testResult.correctAnswers}</Text>
                 </View>
-                
                 <View style={styles.detailRow}>
                   <View style={styles.detailItem}>
-                    <TrendingUp size={20} color="#FF6B35" />
-                    <Text style={styles.detailLabel}>Percentile</Text>
+                    <XCircle size={20} color={Colors.accent} />
+                    <Text style={styles.detailLabel}>Incorrect Answers</Text>
                   </View>
-                  <Text style={styles.detailValue}>{testResult.percentile}%</Text>
+                  <Text style={styles.detailValue}>{testResult.incorrectAnswers}</Text>
                 </View>
-                
                 <View style={styles.detailRow}>
                   <View style={styles.detailItem}>
-                    <Clock size={20} color="#FF6B35" />
-                    <Text style={styles.detailLabel}>Time Taken</Text>
+                    <AlertCircle size={20} color={Colors.accent} />
+                    <Text style={styles.detailLabel}>Unanswered</Text>
                   </View>
-                  <Text style={styles.detailValue}>{formatTime(testResult.timeTaken)}</Text>
+                  <Text style={styles.detailValue}>{testResult.unanswered}</Text>
                 </View>
-                
-                <View style={styles.detailRow}>
-                  <View style={styles.detailItem}>
-                    <Target size={20} color="#FF6B35" />
-                    <Text style={styles.detailLabel}>Marks</Text>
-                  </View>
-                  <Text style={styles.detailValue}>{testResult.obtainedMarks} / {testResult.totalMarks}</Text>
+              </View>
+              <View style={styles.detailRow}>
+                <View style={styles.detailItem}>
+                  <Target size={20} color={Colors.primaryLight} />
+                  <Text style={styles.detailLabel}>Marks</Text>
                 </View>
               </View>
             </View>
@@ -249,7 +245,7 @@ export default function TestResultsScreen() {
               
               <View style={styles.subjectCard}>
                 <View style={styles.subjectHeader}>
-                  <BookOpen size={20} color="#FF6B35" />
+                  <BookOpen size={20} color={Colors.textLink} />
                   <Text style={styles.subjectName}>General Knowledge</Text>
                 </View>
                 <View style={styles.subjectStats}>
@@ -263,7 +259,7 @@ export default function TestResultsScreen() {
 
               <View style={styles.subjectCard}>
                 <View style={styles.subjectHeader}>
-                  <BookOpen size={20} color="#FF6B35" />
+                  <BookOpen size={20} color={Colors.textLink} />
                   <Text style={styles.subjectName}>Mathematics</Text>
                 </View>
                 <View style={styles.subjectStats}>
@@ -277,7 +273,7 @@ export default function TestResultsScreen() {
 
               <View style={styles.subjectCard}>
                 <View style={styles.subjectHeader}>
-                  <BookOpen size={20} color="#FF6B35" />
+                  <BookOpen size={20} color={Colors.textLink} />
                   <Text style={styles.subjectName}>Reasoning</Text>
                 </View>
                 <View style={styles.subjectStats}>
@@ -291,7 +287,7 @@ export default function TestResultsScreen() {
 
               <View style={styles.subjectCard}>
                 <View style={styles.subjectHeader}>
-                  <BookOpen size={20} color="#FF6B35" />
+                  <BookOpen size={20} color={Colors.textLink} />
                   <Text style={styles.subjectName}>English</Text>
                 </View>
                 <View style={styles.subjectStats}>
@@ -323,20 +319,20 @@ export default function TestResultsScreen() {
       {/* Action Buttons */}
       <View style={styles.actionContainer}>
         <TouchableOpacity style={styles.actionButton} onPress={handleViewSolutions}>
-          <BookOpen size={20} color="#FF6B35" />
+          <BookOpen size={20} color={Colors.primary} />
           <Text style={styles.actionButtonText}>View Solutions</Text>
-          <ChevronRight size={16} color="#FF6B35" />
+          <ChevronRight size={16} color={Colors.primary} />
         </TouchableOpacity>
         
         <TouchableOpacity style={styles.actionButton} onPress={handleViewLeaderboard}>
-          <Trophy size={20} color="#FF6B35" />
+          <Trophy size={20} color={Colors.primary} />
           <Text style={styles.actionButtonText}>View Leaderboard</Text>
-          <ChevronRight size={16} color="#FF6B35" />
+          <ChevronRight size={16} color={Colors.primary} />
         </TouchableOpacity>
         
         <TouchableOpacity style={styles.retakeButton} onPress={handleRetakeTest}>
           <LinearGradient
-            colors={['#FF6B35', '#F7931E']}
+            colors={[Colors.primary, Colors.primaryLight]}
             style={styles.retakeGradient}
           >
             <Text style={styles.retakeButtonText}>Retake Test</Text>
@@ -426,12 +422,12 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   activeTab: {
-    backgroundColor: '#FF6B35',
+    backgroundColor: Colors.primaryLight,
   },
   tabText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#6B7280',
+    color: Colors.textSubtle,
   },
   activeTabText: {
     color: '#FFFFFF',
@@ -461,13 +457,13 @@ const styles = StyleSheet.create({
   statNumber: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#111827',
+    color: Colors.textPrimary,
     marginTop: 8,
     marginBottom: 4,
   },
   statLabel: {
     fontSize: 12,
-    color: '#6B7280',
+    color: Colors.textSubtle,
   },
   detailsContainer: {
     marginBottom: 20,
@@ -488,7 +484,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderBottomColor: Colors.light,
   },
   detailItem: {
     flexDirection: 'row',
@@ -496,13 +492,13 @@ const styles = StyleSheet.create({
   },
   detailLabel: {
     fontSize: 16,
-    color: '#111827',
+    color: Colors.textPrimary,
     marginLeft: 8,
   },
   detailValue: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#FF6B35',
+    color: Colors.primaryLight,
   },
   chartContainer: {
     backgroundColor: '#FFFFFF',
@@ -518,7 +514,7 @@ const styles = StyleSheet.create({
   chartTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#111827',
+    color: Colors.textPrimary,
     marginBottom: 16,
   },
   progressChart: {
@@ -527,7 +523,7 @@ const styles = StyleSheet.create({
   progressBar: {
     flexDirection: 'row',
     height: 8,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: Colors.light,
     borderRadius: 4,
     overflow: 'hidden',
     marginBottom: 16,
@@ -552,7 +548,7 @@ const styles = StyleSheet.create({
   },
   legendText: {
     fontSize: 12,
-    color: '#6B7280',
+    color: Colors.textSubtle,
   },
   analysisContainer: {
     marginBottom: 20,
@@ -560,7 +556,7 @@ const styles = StyleSheet.create({
   analysisTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#111827',
+    color: Colors.textPrimary,
     marginBottom: 16,
   },
   subjectCard: {
@@ -582,7 +578,7 @@ const styles = StyleSheet.create({
   subjectName: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#111827',
+    color: Colors.textPrimary,
     marginLeft: 8,
   },
   subjectStats: {
@@ -593,22 +589,22 @@ const styles = StyleSheet.create({
   },
   subjectScore: {
     fontSize: 14,
-    color: '#6B7280',
+    color: Colors.textSubtle,
   },
   subjectPercentage: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#FF6B35',
+    color: Colors.primary,
   },
   subjectProgress: {
     height: 4,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: Colors.light,
     borderRadius: 2,
     overflow: 'hidden',
   },
   subjectProgressBar: {
     height: '100%',
-    backgroundColor: '#FF6B35',
+    backgroundColor: Colors.textLink,
   },
   timeAnalysisContainer: {
     marginBottom: 20,
@@ -629,19 +625,19 @@ const styles = StyleSheet.create({
   },
   timeLabel: {
     fontSize: 14,
-    color: '#6B7280',
+    color: Colors.textSubtle,
   },
   timeValue: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#FF6B35',
+    color: Colors.primary,
   },
   actionContainer: {
     paddingHorizontal: 20,
     paddingVertical: 16,
     backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
+    borderTopColor: Colors.muted,
   },
   actionButton: {
     flexDirection: 'row',
@@ -652,12 +648,12 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#FF6B35',
+    borderColor: Colors.primary,
   },
   actionButtonText: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#FF6B35',
+    color: Colors.primary,
     flex: 1,
     marginLeft: 12,
   },
