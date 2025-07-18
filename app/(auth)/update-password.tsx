@@ -5,6 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '@/theme';
 import logo from '@/assets/images/MockTale.jpg';
 import { router } from 'expo-router';
+import Toast from 'react-native-toast-message';
 
 export default function UpdatePasswordScreen() {
   const [password, setPassword] = useState('');
@@ -15,6 +16,11 @@ export default function UpdatePasswordScreen() {
   const handleUpdate = () => {
     setLoading(true);
     setTimeout(() => {
+        Toast.show({
+            type: 'success',
+            text1: 'Password updated',
+            text2: 'Your password has been updated.',
+          });
       setLoading(false);
       setUpdated(true);
     }, 1500);

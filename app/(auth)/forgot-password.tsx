@@ -5,6 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '@/theme';
 import logo from '@/assets/images/MockTale.jpg';
 import { router } from 'expo-router';
+import Toast from 'react-native-toast-message';
 
 export default function ForgotPasswordScreen() {
   const [email, setEmail] = useState('');
@@ -16,6 +17,11 @@ export default function ForgotPasswordScreen() {
     setTimeout(() => {
       setLoading(false);
       setSent(true);
+      Toast.show({
+        type: 'success',
+        text1: 'Email sent',
+        text2: 'Check your email for the reset code.',
+      });
       router.push('/(auth)/otp-verify');
     }, 1500);
   };

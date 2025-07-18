@@ -5,6 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '@/theme';
 import logo from '@/assets/images/MockTale.jpg';
 import { router } from 'expo-router';
+import Toast from 'react-native-toast-message';
 
 export default function SignupScreen() {
   const [name, setName] = useState('');
@@ -16,7 +17,15 @@ export default function SignupScreen() {
   const handleSignup = () => {
     setLoading(true);
     // Simulate signup logic here
-    setTimeout(() => setLoading(false), 1500);
+  
+    setTimeout(() =>{ setLoading(false);
+      Toast.show({
+        type: 'success',
+        text1: 'Signup successful',
+        text2: 'You are now signed up.',
+      });
+      router.push('/(auth)/login');
+    }, 1500);
   };
 
   return (

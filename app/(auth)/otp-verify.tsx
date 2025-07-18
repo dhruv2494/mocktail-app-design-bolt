@@ -5,6 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '@/theme';
 import logo from '@/assets/images/MockTale.jpg';
 import { router } from 'expo-router';
+import Toast from 'react-native-toast-message';
 
 export default function OtpVerifyScreen() {
   const [otp, setOtp] = useState('');
@@ -16,76 +17,92 @@ export default function OtpVerifyScreen() {
     setLoading(true);
     setTimeout(() => {
       setLoading(false);
+      // Simulate OTP check: success if otp === '123456', else error
       setVerified(true);
-      router.push('/(auth)/update-password');
+      Toast.show({
+        type: 'success',
+        text1: 'OTP Verified',
+        text2: 'You may now update your password.',
+      });
+        setTimeout(() => router.push('/(auth)/update-password'), 1000);
+
     }, 1500);
   };
 
+
   const handleResend = () => {
     setResent(true);
+    Toast.show({
+      type: 'info',
+      text1: 'OTP Resent',
+      text2: 'A new OTP has been sent to your email.',
+    });
     setTimeout(() => setResent(false), 2000);
   };
 
+
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={{ flex: 1 }}
-        >
-          {/* Logo/Avatar */}
-          <View style={styles.logoContainer}>
-            <Image source={logo} style={styles.avatar} />
-            <Text style={styles.title}>OTP Verification</Text>
-            <Text style={styles.subtitle}>Enter the code sent to your email</Text>
-          </View>
+    <>
+      <SafeAreaView style={styles.container}>
+        <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            style={{ flex: 1 }}
+          >
+            {/* Logo/Avatar */}
+            <View style={styles.logoContainer}>
+              <Image source={logo} style={styles.avatar} />
+              <Text style={styles.title}>OTP Verification</Text>
+              <Text style={styles.subtitle}>Enter the code sent to your email</Text>
+            </View>
 
-          <View style={styles.formContainer}>
-            <Text style={styles.label}>OTP Code</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter OTP"
-              placeholderTextColor={Colors.textSubtle || '#999'}
-              keyboardType="number-pad"
-              value={otp}
-              onChangeText={setOtp}
-              maxLength={6}
-              editable={!verified}
-            />
+            <View style={styles.formContainer}>
+              <Text style={styles.label}>OTP Code</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Enter OTP"
+                placeholderTextColor={Colors.textSubtle || '#999'}
+                keyboardType="number-pad"
+                value={otp}
+                onChangeText={setOtp}
+                maxLength={6}
+                editable={!verified}
+              />
 
-            <TouchableOpacity
-              style={styles.verifyButton}
-              onPress={handleVerify}
-            >
-              <LinearGradient
-                colors={[Colors.primary, Colors.primaryLight]}
-                style={styles.verifyGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
+              <TouchableOpacity
+                style={styles.verifyButton}
+                onPress={handleVerify}
               >
-                <Text style={styles.verifyButtonText}>
-                  {verified ? 'Verified!' : loading ? 'Verifying...' : 'Verify'}
-                </Text>
-              </LinearGradient>
-            </TouchableOpacity>
-
-            <View style={styles.resendRow}>
-              <Text>Didn't receive code?</Text>
-              <TouchableOpacity onPress={handleResend} disabled={resent}>
-                <Text style={[styles.resendText, resent && { opacity: 0.5 }]}>Resend OTP</Text>
+                <LinearGradient
+                  colors={[Colors.primary, Colors.primaryLight]}
+                  style={styles.verifyGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                >
+                  <Text style={styles.verifyButtonText}>
+                    {verified ? 'Verified!' : loading ? 'Verifying...' : 'Verify'}
+                  </Text>
+                </LinearGradient>
               </TouchableOpacity>
-            </View>
 
-            <View style={styles.subRoute}>
-              <Text>Back to</Text>
-              <TouchableOpacity onPress={() => router.push('/(auth)/login')}>
-                <Text style={styles.subRouteText}>Login</Text>
-              </TouchableOpacity>
+              <View style={styles.resendRow}>
+                <Text>Didn't receive code?</Text>
+                <TouchableOpacity onPress={handleResend} disabled={resent}>
+                  <Text style={[styles.resendText, resent && { opacity: 0.5 }]}>Resend OTP</Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.subRoute}>
+                <Text>Back to</Text>
+                <TouchableOpacity onPress={() => router.push('/(auth)/login')}>
+                  <Text style={styles.subRouteText}>Login</Text>
+                </TouchableOpacity>
+              </View>
             </View>
-          </View>
-        </KeyboardAvoidingView>
-      </ScrollView>
-    </SafeAreaView>
+          </KeyboardAvoidingView>
+        </ScrollView>
+      </SafeAreaView>
+    </>
   );
 }
 

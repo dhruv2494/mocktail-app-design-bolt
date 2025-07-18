@@ -15,6 +15,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '@/theme';
 import logo from '@/assets/images/MockTale.jpg';
 import { router } from 'expo-router';
+import Toast from 'react-native-toast-message';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -24,7 +25,16 @@ export default function LoginScreen() {
   const handleLogin = () => {
     setLoading(true);
     // Simulate login logic here
-    setTimeout(() => setLoading(false), 1500);
+
+    setTimeout(() => {
+      setLoading(false);
+      Toast.show({
+        type: 'success',
+        text1: 'Login successful',
+        text2: 'You are now logged in.',
+      });
+      router.push('/');
+    }, 1500);
   };
 
   return (
@@ -67,7 +77,10 @@ export default function LoginScreen() {
               onChangeText={setPassword}
             />
 
-            <TouchableOpacity style={styles.forgotButton} onPress={() => router.push('/(auth)/forgot-password')}>
+            <TouchableOpacity
+              style={styles.forgotButton}
+              onPress={() => router.push('/(auth)/forgot-password')}
+            >
               <Text style={styles.forgotText}>Forgot Password?</Text>
             </TouchableOpacity>
 
