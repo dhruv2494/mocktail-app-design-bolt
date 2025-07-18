@@ -90,6 +90,7 @@ export default function ProfileScreen() {
 
   const handleLogout = () => {
     // Handle logout logic
+    router.push('/auth/login');
     console.log('Logging out...');
   };
 

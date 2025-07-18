@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput } from 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Search, Filter, Star, Clock, Users, Play, Lock, CircleCheck as CheckCircle } from 'lucide-react-native';
 import { router } from 'expo-router';
+import { Colors } from '@/theme';
 
 export default function TestSeriesScreen() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -236,7 +237,7 @@ export default function TestSeriesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: Colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -244,14 +245,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.cardBackground,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: Colors.muted,
   },
   headerTitle: {
     fontSize: 24,
     fontWeight: '600',
-    color: '#111827',
+    color: Colors.textPrimary,
   },
   filterButton: {
     padding: 8,
@@ -259,12 +260,12 @@ const styles = StyleSheet.create({
   searchContainer: {
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.cardBackground,
   },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F3F4F6',
+    backgroundColor: Colors.light,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -273,29 +274,32 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: 12,
     fontSize: 16,
-    color: '#111827',
+    color: Colors.textPrimary,
   },
   categoriesContainer: {
     paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: '#FFFFFF',
+    paddingVertical: 8,
+    backgroundColor: Colors.cardBackground,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: Colors.muted,
+    maxHeight: 60,
   },
   categoryChip: {
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: Colors.light,
     marginRight: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   categoryChipActive: {
-    backgroundColor: '#3B82F6',
+    backgroundColor: Colors.primaryLight,
   },
   categoryText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#6B7280',
+    color: Colors.textSubtle,
   },
   categoryTextActive: {
     color: '#FFFFFF',
@@ -306,11 +310,11 @@ const styles = StyleSheet.create({
     paddingTop: 16,
   },
   seriesCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.cardBackground,
     borderRadius: 16,
     padding: 20,
     marginBottom: 16,
-    shadowColor: '#000',
+    shadowColor: Colors.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -328,7 +332,7 @@ const styles = StyleSheet.create({
   seriesTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#111827',
+    color: Colors.textPrimary,
     marginBottom: 4,
   },
   ratingContainer: {
@@ -338,31 +342,31 @@ const styles = StyleSheet.create({
   rating: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#111827',
+    color: Colors.textPrimary,
     marginLeft: 4,
   },
   studentsCount: {
     fontSize: 12,
-    color: '#6B7280',
+    color: Colors.textSubtle,
     marginLeft: 4,
   },
   purchasedBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#D1FAE5',
+    backgroundColor: Colors.badgeSuccessBg,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
   },
   purchasedText: {
     fontSize: 12,
-    color: '#10B981',
+    color: Colors.success,
     fontWeight: '500',
     marginLeft: 4,
   },
   seriesDescription: {
     fontSize: 14,
-    color: '#6B7280',
+    color: Colors.textSubtle,
     lineHeight: 20,
     marginBottom: 12,
   },
@@ -372,7 +376,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   topicChip: {
-    backgroundColor: '#EEF2FF',
+    backgroundColor: Colors.chip,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 8,
@@ -381,12 +385,12 @@ const styles = StyleSheet.create({
   },
   topicText: {
     fontSize: 12,
-    color: '#3B82F6',
+    color: Colors.primaryLight,
     fontWeight: '500',
   },
   moreTopics: {
     fontSize: 12,
-    color: '#6B7280',
+    color: Colors.textSubtle,
     fontStyle: 'italic',
   },
   statsContainer: {
@@ -400,13 +404,13 @@ const styles = StyleSheet.create({
   },
   statText: {
     fontSize: 12,
-    color: '#6B7280',
+    color: Colors.textSubtle,
     marginLeft: 4,
   },
   actionContainer: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    gap: 8,
   },
   priceContainer: {
     flexDirection: 'row',
@@ -415,16 +419,16 @@ const styles = StyleSheet.create({
   price: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#111827',
+    color: Colors.textPrimary,
   },
   originalPrice: {
     fontSize: 14,
-    color: '#6B7280',
+    color: Colors.textSubtle,
     textDecorationLine: 'line-through',
     marginLeft: 8,
   },
   discountBadge: {
-    backgroundColor: '#FEE2E2',
+    backgroundColor: Colors.badgeDangerBg,
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
@@ -432,7 +436,7 @@ const styles = StyleSheet.create({
   },
   discountText: {
     fontSize: 10,
-    color: '#DC2626',
+    color: Colors.danger,
     fontWeight: '600',
   },
   buttonContainer: {
@@ -444,17 +448,17 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#3B82F6',
+    borderColor: Colors.primaryLight,
   },
   freeTestText: {
     fontSize: 14,
-    color: '#3B82F6',
+    color: Colors.primaryLight,
     fontWeight: '500',
   },
   purchaseButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#3B82F6',
+    backgroundColor: Colors.primaryLight,
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,
@@ -466,7 +470,7 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   startButton: {
-    backgroundColor: '#10B981',
+    backgroundColor: Colors.success,
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,

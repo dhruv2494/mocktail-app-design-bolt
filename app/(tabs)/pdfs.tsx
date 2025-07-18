@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput } from 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Search, Download, Eye, FileText, Calendar, Filter, Star } from 'lucide-react-native';
 import { router } from 'expo-router';
+import { Colors } from '@/theme';
 
 export default function PDFsScreen() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -172,7 +173,7 @@ export default function PDFsScreen() {
             <View style={styles.pdfHeader}>
               <View style={styles.pdfHeaderLeft}>
                 <View style={styles.pdfIconContainer}>
-                  <FileText size={24} color="#DC2626" />
+                  <FileText size={24} color={Colors.yellow600} />
                 </View>
                 <View style={styles.pdfInfo}>
                   <Text style={styles.pdfTitle}>{pdf.title}</Text>
@@ -193,7 +194,7 @@ export default function PDFsScreen() {
               </View>
               
               <View style={styles.ratingContainer}>
-                <Star size={14} color="#F59E0B" fill="#F59E0B" />
+                <Star size={14} color={Colors.warning} fill={Colors.warning} />
                 <Text style={styles.rating}>{pdf.rating}</Text>
               </View>
             </View>
@@ -228,7 +229,7 @@ export default function PDFsScreen() {
                 style={styles.previewButton}
                 onPress={() => handlePreview(pdf.id)}
               >
-                <Eye size={16} color="#3B82F6" />
+                <Eye size={16} color={Colors.blue500} />
                 <Text style={styles.previewButtonText}>Preview</Text>
               </TouchableOpacity>
               
@@ -239,7 +240,7 @@ export default function PDFsScreen() {
                 ]}
                 onPress={() => handleDownload(pdf.id)}
               >
-                <Download size={16} color="#FFFFFF" />
+                <Download size={16} color={Colors.white} />
                 <Text style={styles.downloadButtonText}>
                   {pdf.isPremium ? 'Premium Download' : 'Download'}
                 </Text>
@@ -251,7 +252,7 @@ export default function PDFsScreen() {
         {/* Empty State */}
         {filteredPDFs.length === 0 && (
           <View style={styles.emptyState}>
-            <FileText size={48} color="#9CA3AF" />
+            <FileText size={48} color={Colors.gray400} />
             <Text style={styles.emptyTitle}>No PDFs Found</Text>
             <Text style={styles.emptyDescription}>
               Try adjusting your search or category filter
@@ -266,7 +267,7 @@ export default function PDFsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: Colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -274,14 +275,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.cardBackground,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: Colors.muted,
   },
   headerTitle: {
     fontSize: 24,
     fontWeight: '600',
-    color: '#111827',
+    color: Colors.textPrimary,
   },
   filterButton: {
     padding: 8,
@@ -289,12 +290,12 @@ const styles = StyleSheet.create({
   searchContainer: {
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.cardBackground,
   },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F3F4F6',
+    backgroundColor: Colors.light,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -303,32 +304,36 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: 12,
     fontSize: 16,
-    color: '#111827',
+    color: Colors.textPrimary,
   },
   categoriesContainer: {
     paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: '#FFFFFF',
+    paddingVertical: 8,
+    backgroundColor: Colors.cardBackground,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: Colors.muted,
+    maxHeight: 60,
+
   },
   categoryChip: {
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: Colors.light,
     marginRight: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   categoryChipActive: {
-    backgroundColor: '#3B82F6',
+    backgroundColor: Colors.primaryLight,
   },
   categoryText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#6B7280',
+    color: Colors.textSubtle,
   },
   categoryTextActive: {
-    color: '#FFFFFF',
+    color: Colors.white,
   },
   content: {
     flex: 1,
@@ -336,11 +341,11 @@ const styles = StyleSheet.create({
     paddingTop: 16,
   },
   pdfCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.cardBackground,
     borderRadius: 16,
     padding: 20,
     marginBottom: 16,
-    shadowColor: '#000',
+    shadowColor: Colors.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -359,7 +364,7 @@ const styles = StyleSheet.create({
   pdfIconContainer: {
     width: 48,
     height: 48,
-    backgroundColor: '#FEE2E2',
+    backgroundColor: Colors.badgeDangerBg,
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
@@ -371,7 +376,7 @@ const styles = StyleSheet.create({
   pdfTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#111827',
+    color: Colors.textPrimary,
     marginBottom: 4,
   },
   pdfMeta: {
@@ -380,26 +385,26 @@ const styles = StyleSheet.create({
   },
   pdfSize: {
     fontSize: 12,
-    color: '#6B7280',
+    color: Colors.textSubtle,
   },
   pdfSeparator: {
     fontSize: 12,
-    color: '#6B7280',
+    color: Colors.textSubtle,
     marginHorizontal: 6,
   },
   pdfPages: {
     fontSize: 12,
-    color: '#6B7280',
+    color: Colors.textSubtle,
   },
   premiumBadge: {
-    backgroundColor: '#FEF3C7',
+    backgroundColor: Colors.premiumBadge,
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
   },
   premiumText: {
     fontSize: 10,
-    color: '#D97706',
+    color: Colors.premiumText,
     fontWeight: '600',
   },
   ratingContainer: {
@@ -409,12 +414,12 @@ const styles = StyleSheet.create({
   rating: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#111827',
+    color: Colors.textPrimary,
     marginLeft: 4,
   },
   pdfDescription: {
     fontSize: 14,
-    color: '#6B7280',
+    color: Colors.textSubtle,
     lineHeight: 20,
     marginBottom: 12,
   },
@@ -424,7 +429,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   tagChip: {
-    backgroundColor: '#EEF2FF',
+    backgroundColor: Colors.chip,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 8,
@@ -433,7 +438,7 @@ const styles = StyleSheet.create({
   },
   tagText: {
     fontSize: 12,
-    color: '#3B82F6',
+    color: Colors.primaryLight,
     fontWeight: '500',
   },
   statsContainer: {
@@ -447,7 +452,7 @@ const styles = StyleSheet.create({
   },
   statText: {
     fontSize: 12,
-    color: '#6B7280',
+    color: Colors.textSubtle,
     marginLeft: 4,
   },
   actionContainer: {
@@ -462,11 +467,11 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#3B82F6',
+    borderColor: Colors.primaryLight,
   },
   previewButtonText: {
     fontSize: 14,
-    color: '#3B82F6',
+    color: Colors.primaryLight,
     fontWeight: '500',
     marginLeft: 4,
   },
@@ -477,10 +482,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 12,
     borderRadius: 8,
-    backgroundColor: '#3B82F6',
+    backgroundColor: Colors.primaryLight,
   },
   premiumDownloadButton: {
-    backgroundColor: '#F59E0B',
+    backgroundColor: Colors.warning,
   },
   downloadButtonText: {
     fontSize: 14,
@@ -495,13 +500,13 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#111827',
+    color: Colors.textPrimary,
     marginTop: 16,
     marginBottom: 8,
   },
   emptyDescription: {
     fontSize: 14,
-    color: '#6B7280',
+    color: Colors.textSubtle,
     textAlign: 'center',
   },
 });

@@ -122,20 +122,7 @@ export default function QuizScreen() {
   };
 
   const handleSubmitTest = () => {
-    Alert.alert(
-      'Submit Test',
-      'Are you sure you want to submit the test? You cannot change your answers after submission.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Submit', 
-          style: 'destructive',
-          onPress: () => {
-            router.push('/test/results');
-          }
-        }
-      ]
-    );
+    router.push('/test/results');
   };
 
   const getQuestionStatus = (index: number) => {

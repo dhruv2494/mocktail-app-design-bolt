@@ -4,13 +4,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Bell, Search, Play, Clock, Users, Award, BookOpen, FileText } from 'lucide-react-native';
 import { router } from 'expo-router';
+import { Colors } from '@/theme';
 
 export default function HomeScreen() {
   const quickActions = [
-    { id: 1, title: 'Free Tests', icon: Play, color: '#10B981', route: '/test/quiz' },
-    { id: 2, title: 'PYQs', icon: Clock, color: '#FF6B35', route: '/test/quiz' },
-    { id: 3, title: 'Test Series', icon: BookOpen, color: '#F7931E', route: '/test-series' },
-    { id: 4, title: 'Study PDFs', icon: FileText, color: '#FF6B35', route: '/pdfs' },
+    { id: 1, title: 'Free Tests', icon: Play, color: Colors.primaryLight, route: '/test/quiz' },
+    { id: 2, title: 'PYQs', icon: Clock, color: Colors.accent, route: '/test/quiz' },
+    { id: 3, title: 'Test Series', icon: BookOpen, color: Colors.primary, route: '/test-series' },
+    { id: 4, title: 'Study PDFs', icon: FileText, color: Colors.primaryLight, route: '/pdfs' },
   ];
 
   const recentTests = [
@@ -36,10 +37,10 @@ export default function HomeScreen() {
           </View>
           <View style={styles.headerRight}>
             <TouchableOpacity style={styles.iconButton}>
-              <Search size={24} color="#374151" />
+              <Search size={24} color={Colors.textPrimary} />
             </TouchableOpacity>
             <TouchableOpacity style={styles.iconButton}>
-              <Bell size={24} color="#374151" />
+              <Bell size={24} color={Colors.textPrimary} />
             </TouchableOpacity>
           </View>
         </View>
@@ -47,7 +48,7 @@ export default function HomeScreen() {
         {/* Stats Cards */}
         <View style={styles.statsContainer}>
           <LinearGradient
-            colors={['#FF6B35', '#F7931E']}
+            colors={[Colors.primary, Colors.primaryLight]}
             style={styles.statCard}
           >
             <Award size={32} color="#FFFFFF" />
@@ -56,7 +57,7 @@ export default function HomeScreen() {
           </LinearGradient>
           
           <LinearGradient
-            colors={['#F7931E', '#FF6B35']}
+            colors={[Colors.primaryLight, Colors.primary]}
             style={styles.statCard}
           >
             <Users size={32} color="#FFFFFF" />
@@ -73,13 +74,7 @@ export default function HomeScreen() {
               <TouchableOpacity
                 key={action.id}
                 style={styles.quickActionCard}
-                onPress={() => {
-                  if (action.route === '/test/quiz') {
-                    router.push('/test/quiz');
-                  } else {
-                    router.push(action.route);
-                  }
-                }}
+                onPress={() => router.push(action.route)}
               >
                 <View style={[styles.quickActionIcon, { backgroundColor: `${action.color}20` }]}>
                   <action.icon size={24} color={action.color} />
@@ -123,7 +118,7 @@ export default function HomeScreen() {
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             <TouchableOpacity style={styles.featuredCard}>
               <LinearGradient
-                colors={['#FF6B35', '#F7931E']}
+                colors={[Colors.primary, Colors.accent]}
                 style={styles.featuredGradient}
               >
                 <Text style={styles.featuredTitle}>PSI Mock Tests</Text>
@@ -134,7 +129,7 @@ export default function HomeScreen() {
             
             <TouchableOpacity style={styles.featuredCard}>
               <LinearGradient
-                colors={['#F7931E', '#FF6B35']}
+                colors={[Colors.accent, Colors.primaryLight]}
                 style={styles.featuredGradient}
               >
                 <Text style={styles.featuredTitle}>NCERT Series</Text>
@@ -152,7 +147,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: Colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -160,7 +155,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.cardBackground,
     marginBottom: 16,
   },
   headerLeft: {
@@ -175,12 +170,12 @@ const styles = StyleSheet.create({
   },
   greeting: {
     fontSize: 14,
-    color: '#6B7280',
+    color: Colors.textSubtle,
   },
   userName: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#111827',
+    color: Colors.textPrimary,
   },
   headerRight: {
     flexDirection: 'row',
@@ -226,12 +221,12 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#111827',
+    color: Colors.textPrimary,
     marginBottom: 16,
   },
   seeAllText: {
     fontSize: 14,
-    color: '#3B82F6',
+    color: Colors.textLink,
     fontWeight: '500',
   },
   quickActionsGrid: {
@@ -241,11 +236,11 @@ const styles = StyleSheet.create({
   },
   quickActionCard: {
     width: '47%',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.cardBackground,
     padding: 20,
     borderRadius: 12,
     alignItems: 'center',
-    shadowColor: '#000',
+    shadowColor: Colors.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -262,18 +257,18 @@ const styles = StyleSheet.create({
   quickActionText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#374151',
+    color: Colors.textPrimary,
     textAlign: 'center',
   },
   testCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.cardBackground,
     padding: 16,
     borderRadius: 12,
     marginBottom: 12,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    shadowColor: '#000',
+    shadowColor: Colors.shadow,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 2,
@@ -285,12 +280,12 @@ const styles = StyleSheet.create({
   testTitle: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#111827',
+    color: Colors.textPrimary,
     marginBottom: 4,
   },
   testDate: {
     fontSize: 12,
-    color: '#6B7280',
+    color: Colors.textSubtle,
   },
   testCardRight: {
     alignItems: 'flex-end',
@@ -298,7 +293,7 @@ const styles = StyleSheet.create({
   testScore: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#3B82F6',
+    color: Colors.primaryLight,
     marginBottom: 4,
   },
   progressBar: {
@@ -309,7 +304,7 @@ const styles = StyleSheet.create({
   },
   progressFill: {
     height: '100%',
-    backgroundColor: '#FF6B35',
+    backgroundColor: Colors.progress,
     borderRadius: 2,
   },
   featuredCard: {
