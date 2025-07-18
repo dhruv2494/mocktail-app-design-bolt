@@ -1,38 +1,28 @@
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Image,
-  TextInput,
-  KeyboardAvoidingView,
-  Platform,
-} from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '@/theme';
 import logo from '@/assets/images/MockTale.jpg';
 import { router } from 'expo-router';
 
-export default function LoginScreen() {
+export default function ForgotPasswordScreen() {
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [sent, setSent] = useState(false);
 
-  const handleLogin = () => {
+  const handleReset = () => {
     setLoading(true);
-    // Simulate login logic here
-    setTimeout(() => setLoading(false), 1500);
+    setTimeout(() => {
+      setLoading(false);
+      setSent(true);
+      router.push('/(auth)/otp-verify');
+    }, 1500);
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView
-        contentContainerStyle={styles.scrollContainer}
-        showsVerticalScrollIndicator={false}
-      >
+      <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={{ flex: 1 }}
@@ -40,11 +30,10 @@ export default function LoginScreen() {
           {/* Logo/Avatar */}
           <View style={styles.logoContainer}>
             <Image source={logo} style={styles.avatar} />
-            <Text style={styles.title}>Welcome Back</Text>
-            <Text style={styles.subtitle}>Login to your account</Text>
+            <Text style={styles.title}>Forgot Password</Text>
+            <Text style={styles.subtitle}>Enter your email to reset your password</Text>
           </View>
 
-          {/* Login Form */}
           <View style={styles.formContainer}>
             <Text style={styles.label}>Email</Text>
             <TextInput
@@ -55,43 +44,30 @@ export default function LoginScreen() {
               autoCapitalize="none"
               value={email}
               onChangeText={setEmail}
+              editable={!sent}
             />
-
-            <Text style={styles.label}>Password</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter your password"
-              placeholderTextColor={Colors.textSubtle || '#999'}
-              secureTextEntry
-              value={password}
-              onChangeText={setPassword}
-            />
-
-            <TouchableOpacity style={styles.forgotButton} onPress={() => router.push('/(auth)/forgot-password')}>
-              <Text style={styles.forgotText}>Forgot Password?</Text>
-            </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.loginButton}
-              onPress={handleLogin}
-              disabled={loading}
+              style={styles.resetButton}
+              onPress={handleReset}
+              disabled={loading || sent || !email}
             >
               <LinearGradient
                 colors={[Colors.primary, Colors.primaryLight]}
-                style={styles.loginGradient}
+                style={styles.resetGradient}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
               >
-                <Text style={styles.loginButtonText}>
-                  {loading ? 'Logging in...' : 'Login'}
+                <Text style={styles.resetButtonText}>
+                  {sent ? 'Email Sent!' : loading ? 'Sending...' : 'Reset Password'}
                 </Text>
               </LinearGradient>
             </TouchableOpacity>
 
             <View style={styles.subRoute}>
-              <Text>Don't have an account?</Text>
-              <TouchableOpacity onPress={() => router.push('/(auth)/signup')}>
-                <Text style={styles.subRouteText}>Sign up</Text>
+              <Text>Remember your password?</Text>
+              <TouchableOpacity onPress={() => router.push('/(auth)/login')}>
+                <Text style={styles.subRouteText}>Login</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -133,6 +109,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.textSubtle,
     marginBottom: 8,
+    textAlign: 'center',
   },
   formContainer: {
     backgroundColor: Colors.cardBackground,
@@ -161,25 +138,17 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
     color: Colors.textPrimary,
   },
-  forgotButton: {
-    alignSelf: 'flex-end',
-    marginBottom: 16,
-  },
-  forgotText: {
-    color: Colors.textLink,
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  loginButton: {
+  resetButton: {
     borderRadius: 8,
     overflow: 'hidden',
+    marginTop: 16,
   },
-  loginGradient: {
+  resetGradient: {
     paddingVertical: 14,
     alignItems: 'center',
     borderRadius: 8,
   },
-  loginButtonText: {
+  resetButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
@@ -196,5 +165,7 @@ const styles = StyleSheet.create({
     color: Colors.textLink,
     fontSize: 16,
     fontWeight: '600',
+    marginLeft: 5,
   },
 });
+

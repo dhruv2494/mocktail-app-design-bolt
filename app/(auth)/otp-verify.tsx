@@ -1,38 +1,34 @@
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Image,
-  TextInput,
-  KeyboardAvoidingView,
-  Platform,
-} from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '@/theme';
 import logo from '@/assets/images/MockTale.jpg';
 import { router } from 'expo-router';
 
-export default function LoginScreen() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+export default function OtpVerifyScreen() {
+  const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
+  const [resent, setResent] = useState(false);
+  const [verified, setVerified] = useState(false);
 
-  const handleLogin = () => {
+  const handleVerify = () => {
     setLoading(true);
-    // Simulate login logic here
-    setTimeout(() => setLoading(false), 1500);
+    setTimeout(() => {
+      setLoading(false);
+      setVerified(true);
+      router.push('/(auth)/update-password');
+    }, 1500);
+  };
+
+  const handleResend = () => {
+    setResent(true);
+    setTimeout(() => setResent(false), 2000);
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView
-        contentContainerStyle={styles.scrollContainer}
-        showsVerticalScrollIndicator={false}
-      >
+      <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={{ flex: 1 }}
@@ -40,58 +36,50 @@ export default function LoginScreen() {
           {/* Logo/Avatar */}
           <View style={styles.logoContainer}>
             <Image source={logo} style={styles.avatar} />
-            <Text style={styles.title}>Welcome Back</Text>
-            <Text style={styles.subtitle}>Login to your account</Text>
+            <Text style={styles.title}>OTP Verification</Text>
+            <Text style={styles.subtitle}>Enter the code sent to your email</Text>
           </View>
 
-          {/* Login Form */}
           <View style={styles.formContainer}>
-            <Text style={styles.label}>Email</Text>
+            <Text style={styles.label}>OTP Code</Text>
             <TextInput
               style={styles.input}
-              placeholder="Enter your email"
+              placeholder="Enter OTP"
               placeholderTextColor={Colors.textSubtle || '#999'}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              value={email}
-              onChangeText={setEmail}
+              keyboardType="number-pad"
+              value={otp}
+              onChangeText={setOtp}
+              maxLength={6}
+              editable={!verified}
             />
-
-            <Text style={styles.label}>Password</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter your password"
-              placeholderTextColor={Colors.textSubtle || '#999'}
-              secureTextEntry
-              value={password}
-              onChangeText={setPassword}
-            />
-
-            <TouchableOpacity style={styles.forgotButton} onPress={() => router.push('/(auth)/forgot-password')}>
-              <Text style={styles.forgotText}>Forgot Password?</Text>
-            </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.loginButton}
-              onPress={handleLogin}
-              disabled={loading}
+              style={styles.verifyButton}
+              onPress={handleVerify}
             >
               <LinearGradient
                 colors={[Colors.primary, Colors.primaryLight]}
-                style={styles.loginGradient}
+                style={styles.verifyGradient}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
               >
-                <Text style={styles.loginButtonText}>
-                  {loading ? 'Logging in...' : 'Login'}
+                <Text style={styles.verifyButtonText}>
+                  {verified ? 'Verified!' : loading ? 'Verifying...' : 'Verify'}
                 </Text>
               </LinearGradient>
             </TouchableOpacity>
 
+            <View style={styles.resendRow}>
+              <Text>Didn't receive code?</Text>
+              <TouchableOpacity onPress={handleResend} disabled={resent}>
+                <Text style={[styles.resendText, resent && { opacity: 0.5 }]}>Resend OTP</Text>
+              </TouchableOpacity>
+            </View>
+
             <View style={styles.subRoute}>
-              <Text>Don't have an account?</Text>
-              <TouchableOpacity onPress={() => router.push('/(auth)/signup')}>
-                <Text style={styles.subRouteText}>Sign up</Text>
+              <Text>Back to</Text>
+              <TouchableOpacity onPress={() => router.push('/(auth)/login')}>
+                <Text style={styles.subRouteText}>Login</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -133,6 +121,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.textSubtle,
     marginBottom: 8,
+    textAlign: 'center',
   },
   formContainer: {
     backgroundColor: Colors.cardBackground,
@@ -160,29 +149,38 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     backgroundColor: Colors.background,
     color: Colors.textPrimary,
+    letterSpacing: 6,
+    textAlign: 'center',
+    fontSize: 20,
+    fontWeight: '600',
   },
-  forgotButton: {
-    alignSelf: 'flex-end',
-    marginBottom: 16,
-  },
-  forgotText: {
-    color: Colors.textLink,
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  loginButton: {
+  verifyButton: {
     borderRadius: 8,
     overflow: 'hidden',
+    marginTop: 16,
   },
-  loginGradient: {
+  verifyGradient: {
     paddingVertical: 14,
     alignItems: 'center',
     borderRadius: 8,
   },
-  loginButtonText: {
+  verifyButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  resendRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 12,
+    gap: 5,
+  },
+  resendText: {
+    color: Colors.textLink,
+    fontSize: 15,
+    fontWeight: '600',
+    marginLeft: 5,
   },
   subRoute: {
     borderRadius: 8,
@@ -196,5 +194,6 @@ const styles = StyleSheet.create({
     color: Colors.textLink,
     fontSize: 16,
     fontWeight: '600',
+    marginLeft: 5,
   },
 });

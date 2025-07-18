@@ -1,38 +1,28 @@
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Image,
-  TextInput,
-  KeyboardAvoidingView,
-  Platform,
-} from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '@/theme';
 import logo from '@/assets/images/MockTale.jpg';
 import { router } from 'expo-router';
 
-export default function LoginScreen() {
-  const [email, setEmail] = useState('');
+export default function UpdatePasswordScreen() {
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [updated, setUpdated] = useState(false);
 
-  const handleLogin = () => {
+  const handleUpdate = () => {
     setLoading(true);
-    // Simulate login logic here
-    setTimeout(() => setLoading(false), 1500);
+    setTimeout(() => {
+      setLoading(false);
+      setUpdated(true);
+    }, 1500);
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView
-        contentContainerStyle={styles.scrollContainer}
-        showsVerticalScrollIndicator={false}
-      >
+      <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={{ flex: 1 }}
@@ -40,58 +30,54 @@ export default function LoginScreen() {
           {/* Logo/Avatar */}
           <View style={styles.logoContainer}>
             <Image source={logo} style={styles.avatar} />
-            <Text style={styles.title}>Welcome Back</Text>
-            <Text style={styles.subtitle}>Login to your account</Text>
+            <Text style={styles.title}>Update Password</Text>
+            <Text style={styles.subtitle}>Enter your new password below</Text>
           </View>
 
-          {/* Login Form */}
           <View style={styles.formContainer}>
-            <Text style={styles.label}>Email</Text>
+            <Text style={styles.label}>New Password</Text>
             <TextInput
               style={styles.input}
-              placeholder="Enter your email"
-              placeholderTextColor={Colors.textSubtle || '#999'}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              value={email}
-              onChangeText={setEmail}
-            />
-
-            <Text style={styles.label}>Password</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter your password"
+              placeholder="Enter new password"
               placeholderTextColor={Colors.textSubtle || '#999'}
               secureTextEntry
               value={password}
               onChangeText={setPassword}
+              editable={!updated}
             />
 
-            <TouchableOpacity style={styles.forgotButton} onPress={() => router.push('/(auth)/forgot-password')}>
-              <Text style={styles.forgotText}>Forgot Password?</Text>
-            </TouchableOpacity>
+            <Text style={styles.label}>Confirm Password</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Confirm new password"
+              placeholderTextColor={Colors.textSubtle || '#999'}
+              secureTextEntry
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              editable={!updated}
+            />
 
             <TouchableOpacity
-              style={styles.loginButton}
-              onPress={handleLogin}
-              disabled={loading}
+              style={styles.updateButton}
+              onPress={handleUpdate}
+              disabled={loading || updated || !password || password !== confirmPassword}
             >
               <LinearGradient
                 colors={[Colors.primary, Colors.primaryLight]}
-                style={styles.loginGradient}
+                style={styles.updateGradient}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
               >
-                <Text style={styles.loginButtonText}>
-                  {loading ? 'Logging in...' : 'Login'}
+                <Text style={styles.updateButtonText}>
+                  {updated ? 'Updated!' : loading ? 'Updating...' : 'Update Password'}
                 </Text>
               </LinearGradient>
             </TouchableOpacity>
 
             <View style={styles.subRoute}>
-              <Text>Don't have an account?</Text>
-              <TouchableOpacity onPress={() => router.push('/(auth)/signup')}>
-                <Text style={styles.subRouteText}>Sign up</Text>
+              <Text>Back to</Text>
+              <TouchableOpacity onPress={() => router.push('/(auth)/login')}>
+                <Text style={styles.subRouteText}>Login</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -133,6 +119,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.textSubtle,
     marginBottom: 8,
+    textAlign: 'center',
   },
   formContainer: {
     backgroundColor: Colors.cardBackground,
@@ -161,25 +148,17 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
     color: Colors.textPrimary,
   },
-  forgotButton: {
-    alignSelf: 'flex-end',
-    marginBottom: 16,
-  },
-  forgotText: {
-    color: Colors.textLink,
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  loginButton: {
+  updateButton: {
     borderRadius: 8,
     overflow: 'hidden',
+    marginTop: 16,
   },
-  loginGradient: {
+  updateGradient: {
     paddingVertical: 14,
     alignItems: 'center',
     borderRadius: 8,
   },
-  loginButtonText: {
+  updateButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
@@ -196,5 +175,6 @@ const styles = StyleSheet.create({
     color: Colors.textLink,
     fontSize: 16,
     fontWeight: '600',
+    marginLeft: 5,
   },
 });
