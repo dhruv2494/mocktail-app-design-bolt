@@ -4,7 +4,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Trophy, Clock, Target, TrendingUp, ChevronRight, Award, Users, BookOpen, CircleCheck as CheckCircle, Circle as XCircle, CircleAlert as AlertCircle } from 'lucide-react-native';
 import { router } from 'expo-router';
-import { Colors } from '@/theme';
+import { getTheme } from '@/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 
 const { width } = Dimensions.get('window');
 
@@ -28,6 +29,8 @@ interface TestResult {
 
 export default function TestResultsScreen() {
   const [activeTab, setActiveTab] = useState<'overview' | 'analysis'>('overview');
+  const { isDarkMode } = useTheme();
+  const Colors = getTheme(isDarkMode);
 
   const testResult: TestResult = {
     testId: '1',
@@ -45,6 +48,23 @@ export default function TestResultsScreen() {
     totalParticipants: 1250,
     percentile: 85.2,
     subject: 'General Knowledge'
+  };
+
+  // Additional performance metrics as per documentation
+  const performanceMetrics = {
+    accuracy: (testResult.correctAnswers / (testResult.correctAnswers + testResult.incorrectAnswers)) * 100,
+    averageTimePerQuestion: testResult.timeTaken / testResult.totalQuestions,
+    categoryWisePerformance: [
+      { category: 'General Knowledge', attempted: 25, correct: 20, accuracy: 80 },
+      { category: 'Reasoning', attempted: 25, correct: 18, accuracy: 72 },
+      { category: 'Mathematics', attempted: 25, correct: 19, accuracy: 76 },
+      { category: 'English', attempted: 25, correct: 15, accuracy: 60 }
+    ],
+    comparisonWithPreviousTests: {
+      improvementPercent: 8.5,
+      consistencyRating: 'Good'
+    },
+    recommendedFocusAreas: ['English Grammar', 'Speed Calculation', 'Current Affairs']
   };
 
   const formatTime = (seconds: number) => {
@@ -79,6 +99,8 @@ export default function TestResultsScreen() {
   const handleRetakeTest = () => {
     router.push('/test/quiz');
   };
+
+  const styles = getStyles(Colors);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -135,19 +157,19 @@ export default function TestResultsScreen() {
             {/* Quick Stats */}
             <View style={styles.statsContainer}>
               <View style={styles.statCard}>
-                <CheckCircle size={24} color="#10B981" />
+                <CheckCircle size={24} color={Colors.success} />
                 <Text style={styles.statNumber}>{testResult.correctAnswers}</Text>
                 <Text style={styles.statLabel}>Correct</Text>
               </View>
               
               <View style={styles.statCard}>
-                <XCircle size={24} color="#EF4444" />
+                <XCircle size={24} color={Colors.danger} />
                 <Text style={styles.statNumber}>{testResult.incorrectAnswers}</Text>
                 <Text style={styles.statLabel}>Incorrect</Text>
               </View>
               
               <View style={styles.statCard}>
-                <AlertCircle size={24} color="#F59E0B" />
+                <AlertCircle size={24} color={Colors.warning} />
                 <Text style={styles.statNumber}>{testResult.unanswered}</Text>
                 <Text style={styles.statLabel}>Unanswered</Text>
               </View>
@@ -196,7 +218,7 @@ export default function TestResultsScreen() {
                       styles.progressSegment, 
                       { 
                         width: `${(testResult.correctAnswers / testResult.totalQuestions) * 100}%`,
-                        backgroundColor: '#10B981'
+                        backgroundColor: Colors.success
                       }
                     ]} 
                   />
@@ -205,7 +227,7 @@ export default function TestResultsScreen() {
                       styles.progressSegment, 
                       { 
                         width: `${(testResult.incorrectAnswers / testResult.totalQuestions) * 100}%`,
-                        backgroundColor: '#EF4444'
+                        backgroundColor: Colors.danger
                       }
                     ]} 
                   />
@@ -214,7 +236,7 @@ export default function TestResultsScreen() {
                       styles.progressSegment, 
                       { 
                         width: `${(testResult.unanswered / testResult.totalQuestions) * 100}%`,
-                        backgroundColor: '#F59E0B'
+                        backgroundColor: Colors.warning
                       }
                     ]} 
                   />
@@ -222,15 +244,15 @@ export default function TestResultsScreen() {
                 
                 <View style={styles.chartLegend}>
                   <View style={styles.legendItem}>
-                    <View style={[styles.legendDot, { backgroundColor: '#10B981' }]} />
+                    <View style={[styles.legendDot, { backgroundColor: Colors.success }]} />
                     <Text style={styles.legendText}>Correct ({testResult.correctAnswers})</Text>
                   </View>
                   <View style={styles.legendItem}>
-                    <View style={[styles.legendDot, { backgroundColor: '#EF4444' }]} />
+                    <View style={[styles.legendDot, { backgroundColor: Colors.danger }]} />
                     <Text style={styles.legendText}>Incorrect ({testResult.incorrectAnswers})</Text>
                   </View>
                   <View style={styles.legendItem}>
-                    <View style={[styles.legendDot, { backgroundColor: '#F59E0B' }]} />
+                    <View style={[styles.legendDot, { backgroundColor: Colors.warning }]} />
                     <Text style={styles.legendText}>Unanswered ({testResult.unanswered})</Text>
                   </View>
                 </View>
@@ -343,10 +365,10 @@ export default function TestResultsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (Colors: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: Colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -361,12 +383,12 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: Colors.white,
     marginBottom: 4,
   },
   headerSubtitle: {
     fontSize: 16,
-    color: '#FFFFFF',
+    color: Colors.white,
     opacity: 0.9,
   },
   scoreCircle: {
@@ -377,16 +399,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#FFFFFF',
+    borderColor: Colors.white,
   },
   scorePercentage: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: Colors.white,
   },
   scoreLabel: {
     fontSize: 12,
-    color: '#FFFFFF',
+    color: Colors.white,
     opacity: 0.9,
   },
   performanceBadge: {
@@ -404,12 +426,12 @@ const styles = StyleSheet.create({
   performanceText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: Colors.white,
     marginLeft: 8,
   },
   tabContainer: {
     flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.cardBackground,
     marginHorizontal: 20,
     borderRadius: 12,
     padding: 4,
@@ -430,7 +452,7 @@ const styles = StyleSheet.create({
     color: Colors.textSubtle,
   },
   activeTabText: {
-    color: '#FFFFFF',
+    color: Colors.white,
   },
   content: {
     flex: 1,
@@ -442,13 +464,13 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   statCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.cardBackground,
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
     flex: 1,
     marginHorizontal: 4,
-    shadowColor: '#000',
+    shadowColor: Colors.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -469,10 +491,10 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   detailCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.cardBackground,
     borderRadius: 16,
     padding: 20,
-    shadowColor: '#000',
+    shadowColor: Colors.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -501,11 +523,11 @@ const styles = StyleSheet.create({
     color: Colors.primaryLight,
   },
   chartContainer: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.cardBackground,
     borderRadius: 16,
     padding: 20,
     marginBottom: 20,
-    shadowColor: '#000',
+    shadowColor: Colors.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -560,11 +582,11 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   subjectCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.cardBackground,
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
-    shadowColor: '#000',
+    shadowColor: Colors.shadow,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 2,
@@ -610,14 +632,14 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   timeCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.cardBackground,
     borderRadius: 12,
     padding: 16,
     marginBottom: 8,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    shadowColor: '#000',
+    shadowColor: Colors.shadow,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 2,
@@ -635,7 +657,7 @@ const styles = StyleSheet.create({
   actionContainer: {
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.cardBackground,
     borderTopWidth: 1,
     borderTopColor: Colors.muted,
   },
@@ -643,7 +665,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#F9FAFB',
+    backgroundColor: Colors.background,
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
@@ -668,6 +690,6 @@ const styles = StyleSheet.create({
   retakeButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: Colors.white,
   },
 });

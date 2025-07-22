@@ -5,6 +5,7 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  Switch,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -18,9 +19,11 @@ import {
   BookOpen,
   Clock,
   Grid3X3,
+  RotateCcw,
 } from 'lucide-react-native';
 import { router } from 'expo-router';
-import { Colors } from '@/theme';
+import { getTheme } from '@/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface Question {
   id: number;
@@ -32,14 +35,21 @@ interface Question {
   subject: string;
   difficulty: 'Easy' | 'Medium' | 'Hard';
   timeSpent: number;
+  reattemptAnswer?: number; // New answer given during reattempt mode
 }
 
 export default function SolutionsScreen() {
   const [currentQuestion, setCurrentQuestion] = useState(0);
+  const { isDarkMode } = useTheme();
+  const Colors = getTheme(isDarkMode);
   const [showAnswers, setShowAnswers] = useState<{ [key: number]: boolean }>(
     {}
   );
+  const [showAllAnswers, setShowAllAnswers] = useState(false);
   const [showGrid, setShowGrid] = useState(false);
+  const [reattemptMode, setReattemptMode] = useState(false);
+  const [reattemptAnswers, setReattemptAnswers] = useState<{ [key: number]: number }>({});
+  const [hasReattempted, setHasReattempted] = useState<{ [key: number]: boolean }>({});
 
   const questions: Question[] = [
     {
@@ -117,20 +127,74 @@ export default function SolutionsScreen() {
     }));
   };
 
-  const getAnswerStatus = (question: Question) => {
+  const toggleAllAnswers = () => {
+    const newShowAllState = !showAllAnswers;
+    setShowAllAnswers(newShowAllState);
+    
+    // Update individual question states
+    const newShowAnswers: { [key: number]: boolean } = {};
+    questions.forEach((_, index) => {
+      newShowAnswers[index] = newShowAllState;
+    });
+    setShowAnswers(newShowAnswers);
+  };
+
+  const handleReattemptAnswer = (questionIndex: number, answerIndex: number) => {
+    setReattemptAnswers((prev) => ({
+      ...prev,
+      [questionIndex]: answerIndex,
+    }));
+    setHasReattempted((prev) => ({
+      ...prev,
+      [questionIndex]: true,
+    }));
+  };
+
+  const resetReattempt = (questionIndex: number) => {
+    setReattemptAnswers((prev) => {
+      const newAnswers = { ...prev };
+      delete newAnswers[questionIndex];
+      return newAnswers;
+    });
+    setHasReattempted((prev) => ({
+      ...prev,
+      [questionIndex]: false,
+    }));
+    setShowAnswers((prev) => ({
+      ...prev,
+      [questionIndex]: false,
+    }));
+  };
+
+  const getAnswerStatus = (question: Question, questionIndex: number) => {
+    // In reattempt mode, if user hasn't reattempted yet, don't show status
+    if (reattemptMode && !hasReattempted[questionIndex]) {
+      return 'hidden';
+    }
+    
     if (question.userAnswer === undefined) return 'unanswered';
     if (question.userAnswer === question.correctAnswer) return 'correct';
     return 'incorrect';
   };
 
+  const getReattemptStatus = (questionIndex: number) => {
+    const reattemptAnswer = reattemptAnswers[questionIndex];
+    if (reattemptAnswer === undefined) return 'not_attempted';
+    
+    const correctAnswer = questions[questionIndex].correctAnswer;
+    return reattemptAnswer === correctAnswer ? 'correct' : 'incorrect';
+  };
+
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'correct':
-        return <CheckCircle size={20} color="#10B981" />;
+        return <CheckCircle size={20} color={Colors.success} />;
       case 'incorrect':
-        return <XCircle size={20} color="#EF4444" />;
+        return <XCircle size={20} color={Colors.danger} />;
       case 'unanswered':
-        return <AlertCircle size={20} color="#F59E0B" />;
+        return <AlertCircle size={20} color={Colors.warning} />;
+      case 'hidden':
+        return null;
       default:
         return null;
     }
@@ -139,13 +203,15 @@ export default function SolutionsScreen() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'correct':
-        return '#10B981';
+        return Colors.success;
       case 'incorrect':
-        return '#EF4444';
+        return Colors.danger;
       case 'unanswered':
-        return '#F59E0B';
+        return Colors.warning;
+      case 'hidden':
+        return Colors.textSubtle;
       default:
-        return '#6B7280';
+        return Colors.textSubtle;
     }
   };
 
@@ -157,6 +223,8 @@ export default function SolutionsScreen() {
         return 'Incorrect';
       case 'unanswered':
         return 'Not Answered';
+      case 'hidden':
+        return 'Reattempt Mode';
       default:
         return '';
     }
@@ -169,7 +237,7 @@ export default function SolutionsScreen() {
   };
 
   const currentQuestionData = questions[currentQuestion];
-  const answerStatus = getAnswerStatus(currentQuestionData);
+  const answerStatus = getAnswerStatus(currentQuestionData, currentQuestion);
   const renderQuestionGrid = () => (
     <View style={styles.gridContainer}>
       <View style={styles.gridHeader}>
@@ -181,19 +249,19 @@ export default function SolutionsScreen() {
 
       <View style={styles.legendContainer}>
         <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: '#10B981' }]} />
+          <View style={[styles.legendDot, { backgroundColor: Colors.success }]} />
           <Text style={styles.legendText}>Answered</Text>
         </View>
         <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: '#F59E0B' }]} />
+          <View style={[styles.legendDot, { backgroundColor: Colors.warning }]} />
           <Text style={styles.legendText}>Flagged</Text>
         </View>
         <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: '#3B82F6' }]} />
+          <View style={[styles.legendDot, { backgroundColor: Colors.primary }]} />
           <Text style={styles.legendText}>Current</Text>
         </View>
         <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: '#E5E7EB' }]} />
+          <View style={[styles.legendDot, { backgroundColor: Colors.muted }]} />
           <Text style={styles.legendText}>Unanswered</Text>
         </View>
       </View>
@@ -206,7 +274,7 @@ export default function SolutionsScreen() {
               styles.gridItem,
               {
                 backgroundColor: getStatusColor(
-                  getAnswerStatus(questions[index])
+                  getAnswerStatus(questions[index], index)
                 ),
               },
             ]}
@@ -218,8 +286,8 @@ export default function SolutionsScreen() {
             <Text
               style={[
                 styles.gridItemText,
-                getAnswerStatus(questions[index]) === 'unanswered' && {
-                  color: '#6B7280',
+                getAnswerStatus(questions[index], index) === 'unanswered' && {
+                  color: Colors.textSubtle,
                 },
               ]}
             >
@@ -239,6 +307,8 @@ export default function SolutionsScreen() {
     );
   }
 
+  const styles = getStyles(Colors);
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
@@ -247,7 +317,7 @@ export default function SolutionsScreen() {
           style={styles.backButton}
           onPress={() => router.back()}
         >
-          <ChevronLeft size={24} color="#374151" />
+          <ChevronLeft size={24} color={Colors.textPrimary} />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
           <Text style={styles.headerTitle}>Solutions</Text>
@@ -255,13 +325,26 @@ export default function SolutionsScreen() {
             Question {currentQuestion + 1} of {questions.length}
           </Text>
         </View>
-        <TouchableOpacity
-          style={styles.controlButton}
-          onPress={() => setShowGrid(true)}
-        >
-          <Grid3X3 size={16} color="#6B7280" />
-        </TouchableOpacity>
-        <View style={styles.headerRight} />
+        <View style={styles.controlButtons}>
+          <TouchableOpacity
+            style={styles.controlButton}
+            onPress={() => setShowGrid(true)}
+          >
+            <Grid3X3 size={16} color={Colors.textSubtle} />
+          </TouchableOpacity>
+        </View>
+        <View style={styles.headerRight}>
+          <View style={styles.reattemptToggle}>
+            <RotateCcw size={16} color={Colors.textSubtle} />
+            <Switch
+              value={reattemptMode}
+              onValueChange={setReattemptMode}
+              trackColor={{ false: Colors.muted, true: Colors.primaryLight }}
+              thumbColor={reattemptMode ? Colors.primary : Colors.textSubtle}
+              style={{ marginLeft: 8 }}
+            />
+          </View>
+        </View>
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
@@ -270,7 +353,7 @@ export default function SolutionsScreen() {
           <View style={styles.questionHeader}>
             <View style={styles.questionMeta}>
               <View style={styles.subjectBadge}>
-                <BookOpen size={12} color="#FF6B35" />
+                <BookOpen size={12} color={Colors.primary} />
                 <Text style={styles.subjectText}>
                   {currentQuestionData.subject}
                 </Text>
@@ -281,10 +364,10 @@ export default function SolutionsScreen() {
                   {
                     backgroundColor:
                       currentQuestionData.difficulty === 'Easy'
-                        ? '#D1FAE5'
+                        ? Colors.badgeSuccessBg
                         : currentQuestionData.difficulty === 'Medium'
-                        ? '#FEF3C7'
-                        : '#FEE2E2',
+                        ? Colors.premiumBadge
+                        : Colors.badgeDangerBg,
                   },
                 ]}
               >
@@ -294,10 +377,10 @@ export default function SolutionsScreen() {
                     {
                       color:
                         currentQuestionData.difficulty === 'Easy'
-                          ? '#065F46'
+                          ? Colors.success
                           : currentQuestionData.difficulty === 'Medium'
-                          ? '#92400E'
-                          : '#991B1B',
+                          ? Colors.premiumText
+                          : Colors.danger,
                     },
                   ]}
                 >
@@ -324,7 +407,7 @@ export default function SolutionsScreen() {
           </Text>
 
           <View style={styles.timeContainer}>
-            <Clock size={14} color="#6B7280" />
+            <Clock size={14} color={Colors.textSubtle} />
             <Text style={styles.timeText}>
               Time spent:{' '}
               {currentQuestionData.timeSpent > 0
@@ -339,27 +422,77 @@ export default function SolutionsScreen() {
           {currentQuestionData.options.map((option, index) => {
             const isCorrect = index === currentQuestionData.correctAnswer;
             const isUserAnswer = index === currentQuestionData.userAnswer;
+            const isReattemptAnswer = index === reattemptAnswers[currentQuestion];
+            const showOriginalAnswers = !reattemptMode || hasReattempted[currentQuestion];
 
-            return (
-              <View
+            // In reattempt mode, show reattempt answer styling if user has reattempted
+            const showCorrectStyling = showOriginalAnswers && isCorrect;
+            const showIncorrectStyling = showOriginalAnswers && isUserAnswer && !isCorrect;
+            const showReattemptCorrect = reattemptMode && hasReattempted[currentQuestion] && isReattemptAnswer && isCorrect;
+            const showReattemptIncorrect = reattemptMode && hasReattempted[currentQuestion] && isReattemptAnswer && !isCorrect;
+
+            const optionComponent = reattemptMode && !hasReattempted[currentQuestion] ? (
+              // Clickable option for reattempt
+              <TouchableOpacity
                 key={index}
                 style={[
                   styles.optionCard,
-                  isCorrect && styles.correctOption,
-                  isUserAnswer && !isCorrect && styles.incorrectOption,
+                  isReattemptAnswer && styles.selectedOption,
                 ]}
+                onPress={() => handleReattemptAnswer(currentQuestion, index)}
               >
                 <View
                   style={[
                     styles.optionIndicator,
-                    isCorrect && styles.correctIndicator,
-                    isUserAnswer && !isCorrect && styles.incorrectIndicator,
+                    isReattemptAnswer && styles.selectedIndicator,
                   ]}
                 >
                   <Text
                     style={[
                       styles.optionLetter,
-                      (isCorrect || (isUserAnswer && !isCorrect)) &&
+                      isReattemptAnswer && styles.optionLetterActive,
+                    ]}
+                  >
+                    {String.fromCharCode(65 + index)}
+                  </Text>
+                </View>
+
+                <Text
+                  style={[
+                    styles.optionText,
+                    isReattemptAnswer && styles.selectedOptionText,
+                  ]}
+                >
+                  {option}
+                </Text>
+
+                {isReattemptAnswer && <CheckCircle size={20} color={Colors.primary} />}
+              </TouchableOpacity>
+            ) : (
+              // Regular display mode or after reattempt
+              <View
+                key={index}
+                style={[
+                  styles.optionCard,
+                  showCorrectStyling && styles.correctOption,
+                  showIncorrectStyling && styles.incorrectOption,
+                  showReattemptCorrect && styles.reattemptCorrectOption,
+                  showReattemptIncorrect && styles.reattemptIncorrectOption,
+                ]}
+              >
+                <View
+                  style={[
+                    styles.optionIndicator,
+                    showCorrectStyling && styles.correctIndicator,
+                    showIncorrectStyling && styles.incorrectIndicator,
+                    showReattemptCorrect && styles.correctIndicator,
+                    showReattemptIncorrect && styles.incorrectIndicator,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.optionLetter,
+                      (showCorrectStyling || showIncorrectStyling || showReattemptCorrect || showReattemptIncorrect) &&
                         styles.optionLetterActive,
                     ]}
                   >
@@ -370,41 +503,89 @@ export default function SolutionsScreen() {
                 <Text
                   style={[
                     styles.optionText,
-                    isCorrect && styles.correctOptionText,
-                    isUserAnswer && !isCorrect && styles.incorrectOptionText,
+                    showCorrectStyling && styles.correctOptionText,
+                    showIncorrectStyling && styles.incorrectOptionText,
+                    showReattemptCorrect && styles.correctOptionText,
+                    showReattemptIncorrect && styles.incorrectOptionText,
                   ]}
                 >
                   {option}
                 </Text>
 
-                {isCorrect && <CheckCircle size={20} color="#10B981" />}
-                {isUserAnswer && !isCorrect && (
-                  <XCircle size={20} color="#EF4444" />
-                )}
+                {showCorrectStyling && <CheckCircle size={20} color={Colors.success} />}
+                {showIncorrectStyling && <XCircle size={20} color={Colors.danger} />}
+                {showReattemptCorrect && <CheckCircle size={20} color={Colors.success} />}
+                {showReattemptIncorrect && <XCircle size={20} color={Colors.danger} />}
               </View>
             );
+
+            return optionComponent;
           })}
         </View>
 
+        {/* Reattempt Status */}
+        {reattemptMode && hasReattempted[currentQuestion] && (
+          <View style={styles.reattemptStatusCard}>
+            <Text style={styles.reattemptStatusTitle}>Reattempt Result:</Text>
+            <View style={styles.reattemptStatusRow}>
+              {getReattemptStatus(currentQuestion) === 'correct' ? (
+                <>
+                  <CheckCircle size={20} color={Colors.success} />
+                  <Text style={[styles.reattemptStatusText, { color: Colors.success }]}>
+                    Correct! Well done.
+                  </Text>
+                </>
+              ) : (
+                <>
+                  <XCircle size={20} color={Colors.danger} />
+                  <Text style={[styles.reattemptStatusText, { color: Colors.danger }]}>
+                    Incorrect. The correct answer is shown above.
+                  </Text>
+                </>
+              )}
+            </View>
+            <TouchableOpacity
+              style={styles.resetButton}
+              onPress={() => resetReattempt(currentQuestion)}
+            >
+              <RotateCcw size={16} color={Colors.primary} />
+              <Text style={styles.resetButtonText}>Try Again</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* Show Answer Button */}
-        <TouchableOpacity
-          style={styles.showAnswerButton}
-          onPress={() => toggleShowAnswer(currentQuestion)}
-        >
-          {showAnswers[currentQuestion] ? (
-            <EyeOff size={20} color={Colors.primary} />
-          ) : (
-            <Eye size={20} color={Colors.primary} />
-          )}
-          <Text style={styles.showAnswerText}>
-            {showAnswers[currentQuestion]
-              ? 'Hide Explanation'
-              : 'Show Explanation'}
-          </Text>
-        </TouchableOpacity>
+        {/* Only show explanation button if not in reattempt mode, or if user has reattempted */}
+        {(!reattemptMode || hasReattempted[currentQuestion]) && (
+          <TouchableOpacity
+            style={styles.showAnswerButton}
+            onPress={() => toggleShowAnswer(currentQuestion)}
+          >
+            {showAnswers[currentQuestion] ? (
+              <EyeOff size={20} color={Colors.primary} />
+            ) : (
+              <Eye size={20} color={Colors.primary} />
+            )}
+            <Text style={styles.showAnswerText}>
+              {showAnswers[currentQuestion]
+                ? 'Hide Explanation'
+                : 'Show Explanation'}
+            </Text>
+          </TouchableOpacity>
+        )}
+
+        {/* Reattempt Instructions */}
+        {reattemptMode && !hasReattempted[currentQuestion] && (
+          <View style={styles.instructionCard}>
+            <Text style={styles.instructionTitle}>Reattempt Mode</Text>
+            <Text style={styles.instructionText}>
+              Select an answer above to see if you got it right. The explanation will be shown after you make your choice.
+            </Text>
+          </View>
+        )}
 
         {/* Explanation */}
-        {showAnswers[currentQuestion] && (
+        {showAnswers[currentQuestion] && (!reattemptMode || hasReattempted[currentQuestion]) && (
           <View style={styles.explanationCard}>
             <Text style={styles.explanationTitle}>Explanation</Text>
             <Text style={styles.explanationText}>
@@ -426,7 +607,7 @@ export default function SolutionsScreen() {
         >
           <ChevronLeft
             size={20}
-            color={currentQuestion === 0 ? '#9CA3AF' : '#374151'}
+            color={currentQuestion === 0 ? Colors.gray400 : Colors.textPrimary}
           />
           <Text
             style={[
@@ -463,7 +644,7 @@ export default function SolutionsScreen() {
           <ChevronRight
             size={20}
             color={
-              currentQuestion === questions.length - 1 ? '#9CA3AF' : '#374151'
+              currentQuestion === questions.length - 1 ? Colors.gray400 : Colors.textPrimary
             }
           />
         </TouchableOpacity>
@@ -472,19 +653,19 @@ export default function SolutionsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (Colors: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: Colors.background,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.cardBackground,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: Colors.muted,
   },
   controlButtons: {
     flexDirection: 'row',
@@ -493,7 +674,7 @@ const styles = StyleSheet.create({
   controlButton: {
     padding: 8,
     borderRadius: 8,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: Colors.light,
   },
   backButton: {
     padding: 8,
@@ -505,22 +686,26 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#111827',
+    color: Colors.textPrimary,
   },
   questionCounter: {
     fontSize: 12,
-    color: '#6B7280',
+    color: Colors.textSubtle,
     marginTop: 2,
   },
   headerRight: {
     width: 40,
   },
+  reattemptToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   navigationContainer: {
     paddingHorizontal: 20,
     paddingVertical: 12,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.cardBackground,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: Colors.muted,
   },
   navButton: {
     width: 40,
@@ -530,17 +715,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 8,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.cardBackground,
   },
   activeNavButton: {
-    backgroundColor: '#FF6B35',
+    backgroundColor: Colors.primary,
   },
   navButtonText: {
     fontSize: 14,
     fontWeight: '600',
   },
   activeNavButtonText: {
-    color: '#FFFFFF',
+    color: Colors.white,
   },
   content: {
     flex: 1,
@@ -559,12 +744,12 @@ const styles = StyleSheet.create({
   gridTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#111827',
+    color: Colors.textPrimary,
   },
   gridClose: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#6B7280',
+    color: Colors.textSubtle,
   },
   legendContainer: {
     flexDirection: 'row',
@@ -575,21 +760,23 @@ const styles = StyleSheet.create({
   legendItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
   },
   legendDot: {
     width: 12,
     height: 12,
     borderRadius: 6,
+    marginRight: 8,
   },
   legendText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#6B7280',
+    color: Colors.textSubtle,
   },
   grid: {
     flexDirection: 'row',
-    gap: 8,
+    flexWrap: 'wrap',
+    justifyContent: 'flex-start',
+    marginHorizontal: -4,
   },
   gridItem: {
     width: 40,
@@ -597,21 +784,21 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 8,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.cardBackground,
+    margin: 4,
   },
   gridItemText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#111827',
+    color: Colors.textPrimary,
   },
   questionCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.cardBackground,
     borderRadius: 16,
     padding: 20,
     marginTop: 16,
     marginBottom: 16,
-    shadowColor: '#000',
+    shadowColor: Colors.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -630,7 +817,7 @@ const styles = StyleSheet.create({
   subjectBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFF4ED',
+    backgroundColor: Colors.chip,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 8,
@@ -638,7 +825,7 @@ const styles = StyleSheet.create({
   },
   subjectText: {
     fontSize: 12,
-    color: '#FF6B35',
+    color: Colors.primary,
     fontWeight: '500',
     marginLeft: 4,
   },
@@ -663,7 +850,7 @@ const styles = StyleSheet.create({
   questionText: {
     fontSize: 18,
     fontWeight: '500',
-    color: '#111827',
+    color: Colors.textPrimary,
     lineHeight: 26,
     marginBottom: 12,
   },
@@ -673,7 +860,7 @@ const styles = StyleSheet.create({
   },
   timeText: {
     fontSize: 12,
-    color: '#6B7280',
+    color: Colors.textSubtle,
     marginLeft: 4,
   },
   optionsContainer: {
@@ -682,67 +869,86 @@ const styles = StyleSheet.create({
   optionCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.cardBackground,
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
     borderWidth: 2,
-    borderColor: '#E5E7EB',
-    shadowColor: '#000',
+    borderColor: Colors.muted,
+    shadowColor: Colors.shadow,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 2,
     elevation: 2,
   },
   correctOption: {
-    borderColor: '#10B981',
-    backgroundColor: '#ECFDF5',
+    borderColor: Colors.success,
+    backgroundColor: Colors.badgeSuccessBg,
   },
   incorrectOption: {
-    borderColor: '#EF4444',
-    backgroundColor: '#FEF2F2',
+    borderColor: Colors.danger,
+    backgroundColor: Colors.badgeDangerBg,
   },
   optionIndicator: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: Colors.light,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
   },
   correctIndicator: {
-    backgroundColor: '#10B981',
+    backgroundColor: Colors.success,
   },
   incorrectIndicator: {
-    backgroundColor: '#EF4444',
+    backgroundColor: Colors.danger,
   },
   optionLetter: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#6B7280',
+    color: Colors.textSubtle,
   },
   optionLetterActive: {
-    color: '#FFFFFF',
+    color: Colors.white,
   },
   optionText: {
     fontSize: 16,
-    color: '#111827',
+    color: Colors.textPrimary,
     flex: 1,
     lineHeight: 22,
   },
   correctOptionText: {
-    color: '#065F46',
+    color: Colors.success,
     fontWeight: '500',
   },
   incorrectOptionText: {
-    color: '#991B1B',
+    color: Colors.danger,
+  },
+  selectedOption: {
+    borderColor: Colors.primary,
+    backgroundColor: Colors.chip,
+  },
+  selectedIndicator: {
+    backgroundColor: Colors.primary,
+  },
+  selectedOptionText: {
+    color: Colors.primary,
+    fontWeight: '500',
+  },
+  reattemptCorrectOption: {
+    borderColor: Colors.success,
+    backgroundColor: Colors.badgeSuccessBg,
+  },
+  reattemptIncorrectOption: {
+    borderColor: Colors.danger,
+    backgroundColor: Colors.badgeDangerBg,
   },
   showAnswerButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.cardBackground,
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
@@ -756,13 +962,13 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   explanationCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.cardBackground,
     borderRadius: 16,
     padding: 20,
     marginBottom: 20,
     borderLeftWidth: 4,
     borderLeftColor: Colors.primary,
-    shadowColor: '#000',
+    shadowColor: Colors.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -776,17 +982,85 @@ const styles = StyleSheet.create({
   },
   explanationText: {
     fontSize: 16,
-    color: '#374151',
+    color: Colors.textPrimary,
     lineHeight: 24,
+  },
+  reattemptStatusCard: {
+    backgroundColor: Colors.cardBackground,
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+    shadowColor: Colors.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  reattemptStatusTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: Colors.textPrimary,
+    marginBottom: 12,
+  },
+  reattemptStatusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  reattemptStatusText: {
+    fontSize: 14,
+    fontWeight: '500',
+    marginLeft: 8,
+    flex: 1,
+  },
+  resetButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.light,
+    borderRadius: 8,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: Colors.primary,
+  },
+  resetButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: Colors.primary,
+    marginLeft: 6,
+  },
+  instructionCard: {
+    backgroundColor: Colors.cardBackground,
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: Colors.warning,
+    shadowColor: Colors.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  instructionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: Colors.warning,
+    marginBottom: 8,
+  },
+  instructionText: {
+    fontSize: 14,
+    color: Colors.textPrimary,
+    lineHeight: 20,
   },
   navigationFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.cardBackground,
     borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
+    borderTopColor: Colors.muted,
   },
   navFooterButton: {
     flexDirection: 'row',
@@ -794,7 +1068,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 12,
     borderRadius: 8,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: Colors.light,
   },
   navFooterButtonDisabled: {
     opacity: 0.5,
@@ -802,9 +1076,9 @@ const styles = StyleSheet.create({
   navFooterButtonText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#374151',
+    color: Colors.textPrimary,
   },
   navFooterButtonTextDisabled: {
-    color: '#9CA3AF',
+    color: Colors.gray400,
   },
 });

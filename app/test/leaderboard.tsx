@@ -4,10 +4,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Trophy, Medal, Award, TrendingUp, Calendar, ChevronLeft, Crown } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { Colors } from '@/theme';
+import { getTheme } from '@/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 
 export default function TestLeaderboardScreen() {
   const [selectedPeriod, setSelectedPeriod] = useState('This Test');
+  const { isDarkMode } = useTheme();
+  const Colors = getTheme(isDarkMode);
 
   const periods = ['This Test', 'Weekly', 'Monthly', 'All Time'];
 
@@ -126,6 +129,8 @@ export default function TestLeaderboardScreen() {
         return <Text style={styles.rankNumber}>{rank}</Text>;
     }
   };
+
+  const styles = getStyles(Colors);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -296,19 +301,19 @@ export default function TestLeaderboardScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (Colors: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: Colors.background,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.cardBackground,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: Colors.muted,
   },
   backButton: {
     padding: 8,
@@ -320,11 +325,11 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#111827',
+    color: Colors.textPrimary,
   },
   headerSubtitle: {
     fontSize: 12,
-    color: '#6B7280',
+    color: Colors.textSubtle,
     marginTop: 2,
   },
   calendarButton: {
@@ -348,18 +353,18 @@ const styles = StyleSheet.create({
   statNumber: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: Colors.white,
     marginBottom: 4,
   },
   statLabel: {
     fontSize: 12,
-    color: '#FFFFFF',
+    color: Colors.white,
     opacity: 0.9,
   },
   periodContainer: {
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.cardBackground,
   },
   periodChip: {
     paddingHorizontal: 16,
@@ -377,7 +382,7 @@ const styles = StyleSheet.create({
     color: Colors.textSubtle,
   },
   periodTextActive: {
-    color: '#FFFFFF',
+    color: Colors.white,
   },
   topPerformersContainer: {
     paddingHorizontal: 20,
@@ -471,7 +476,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    shadowColor: '#000',
+    shadowColor: Colors.shadow,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 2,

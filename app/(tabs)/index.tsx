@@ -4,14 +4,20 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Bell, Search, Play, Clock, Users, Award, BookOpen, FileText } from 'lucide-react-native';
 import { router } from 'expo-router';
-import { Colors } from '@/theme';
+import { getTheme } from '@/theme';
+import { useTheme } from '@/contexts/ThemeContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function HomeScreen() {
+  const { isDarkMode } = useTheme();
+  const Colors = getTheme(isDarkMode);
+  const { t } = useLanguage();
+  
   const quickActions = [
-    { id: 1, title: 'Free Tests', icon: Play, color: Colors.primaryLight, route: '/test/quiz' },
-    { id: 2, title: 'PYQs', icon: Clock, color: Colors.accent, route: '/test/quiz' },
-    { id: 3, title: 'Test Series', icon: BookOpen, color: Colors.primary, route: '/test-series' },
-    { id: 4, title: 'Study PDFs', icon: FileText, color: Colors.primaryLight, route: '/pdfs' },
+    { id: 1, title: t.freeTests.title, icon: Play, color: Colors.success, route: '/free-tests' },
+    { id: 2, title: t.freeTests.pyqs, icon: Clock, color: Colors.accent, route: '/free-tests' },
+    { id: 3, title: t.testSeries.title, icon: BookOpen, color: Colors.primary, route: '/test-series' },
+    { id: 4, title: t.pdfs.title, icon: FileText, color: Colors.primaryLight, route: '/pdfs' },
   ];
 
   const recentTests = [
@@ -19,6 +25,8 @@ export default function HomeScreen() {
     { id: 2, title: 'PSI Mock Test 1', score: 72, total: 100, date: '5 days ago' },
     { id: 3, title: 'Deputy Section Officer', score: 91, total: 100, date: '1 week ago' },
   ];
+
+  const styles = getStyles(Colors);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -31,7 +39,7 @@ export default function HomeScreen() {
               style={styles.avatar}
             />
             <View>
-              <Text style={styles.greeting}>Good Morning!</Text>
+              <Text style={styles.greeting}>{t.home.goodMorning}</Text>
               <Text style={styles.userName}>John Doe</Text>
             </View>
           </View>
@@ -53,7 +61,7 @@ export default function HomeScreen() {
           >
             <Award size={32} color="#FFFFFF" />
             <Text style={styles.statNumber}>1,247</Text>
-            <Text style={styles.statLabel}>Total Score</Text>
+            <Text style={styles.statLabel}>{t.home.totalScore}</Text>
           </LinearGradient>
           
           <LinearGradient
@@ -62,13 +70,13 @@ export default function HomeScreen() {
           >
             <Users size={32} color="#FFFFFF" />
             <Text style={styles.statNumber}>15th</Text>
-            <Text style={styles.statLabel}>Rank</Text>
+            <Text style={styles.statLabel}>{t.home.rank}</Text>
           </LinearGradient>
         </View>
 
         {/* Quick Actions */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Quick Actions</Text>
+          <Text style={styles.sectionTitle}>{t.home.quickActions}</Text>
           <View style={styles.quickActionsGrid}>
             {quickActions.map((action) => (
               <TouchableOpacity
@@ -88,9 +96,9 @@ export default function HomeScreen() {
         {/* Recent Tests */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Recent Tests</Text>
+            <Text style={styles.sectionTitle}>{t.home.recentTests}</Text>
             <TouchableOpacity>
-              <Text style={styles.seeAllText}>See All</Text>
+              <Text style={styles.seeAllText}>{t.common.seeAll}</Text>
             </TouchableOpacity>
           </View>
           
@@ -114,7 +122,7 @@ export default function HomeScreen() {
 
         {/* Featured Test Series */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Featured Test Series</Text>
+          <Text style={styles.sectionTitle}>{t.home.featuredTestSeries}</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             <TouchableOpacity style={styles.featuredCard}>
               <LinearGradient
@@ -144,7 +152,7 @@ export default function HomeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (Colors: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,

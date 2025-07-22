@@ -3,11 +3,15 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput } from 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Search, Download, Eye, FileText, Calendar, Filter, Star } from 'lucide-react-native';
 import { router } from 'expo-router';
-import { Colors } from '@/theme';
+import { getTheme } from '@/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 
 export default function PDFsScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
+  
+  const { isDarkMode } = useTheme();
+  const Colors = getTheme(isDarkMode);
 
   const categories = ['All', 'Study Material', 'Previous Papers', 'Solutions', 'Notes'];
 
@@ -116,6 +120,8 @@ export default function PDFsScreen() {
       day: 'numeric' 
     });
   };
+
+  const styles = getStyles(Colors);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -264,7 +270,7 @@ export default function PDFsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (Colors: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,

@@ -1,13 +1,17 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Search, Filter, Star, Clock, Users, Play, Lock, CircleCheck as CheckCircle } from 'lucide-react-native';
+import { Search, Filter, Star, Clock, Users, Play, Lock, CircleCheck as CheckCircle, ShoppingCart, Gift } from 'lucide-react-native';
 import { router } from 'expo-router';
-import { Colors } from '@/theme';
+import { getTheme } from '@/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 
 export default function TestSeriesScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
+  
+  const { isDarkMode } = useTheme();
+  const Colors = getTheme(isDarkMode);
 
   const categories = ['All', 'Exam Wise', 'Subject Wise', 'NCERT', 'Free'];
 
@@ -88,20 +92,22 @@ export default function TestSeriesScreen() {
     router.push('/test/quiz');
   };
 
+  const styles = getStyles(Colors);
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Test Series</Text>
         <TouchableOpacity style={styles.filterButton}>
-          <Filter size={20} color="#374151" />
+          <Filter size={20} color={Colors.textPrimary} />
         </TouchableOpacity>
       </View>
 
       {/* Search Bar */}
       <View style={styles.searchContainer}>
         <View style={styles.searchBar}>
-          <Search size={20} color="#6B7280" />
+          <Search size={20} color={Colors.textSubtle} />
           <TextInput
             style={styles.searchInput}
             placeholder="Search test series..."
@@ -145,14 +151,14 @@ export default function TestSeriesScreen() {
               <View style={styles.seriesHeaderLeft}>
                 <Text style={styles.seriesTitle}>{series.title}</Text>
                 <View style={styles.ratingContainer}>
-                  <Star size={14} color="#F59E0B" fill="#F59E0B" />
+                  <Star size={14} color={Colors.warning} fill={Colors.warning} />
                   <Text style={styles.rating}>{series.rating}</Text>
                   <Text style={styles.studentsCount}>({series.students} students)</Text>
                 </View>
               </View>
               {series.isPurchased && (
                 <View style={styles.purchasedBadge}>
-                  <CheckCircle size={16} color="#10B981" />
+                  <CheckCircle size={16} color={Colors.success} />
                   <Text style={styles.purchasedText}>Purchased</Text>
                 </View>
               )}
@@ -176,15 +182,15 @@ export default function TestSeriesScreen() {
             {/* Stats */}
             <View style={styles.statsContainer}>
               <View style={styles.statItem}>
-                <Clock size={16} color="#6B7280" />
+                <Clock size={16} color={Colors.textSubtle} />
                 <Text style={styles.statText}>{series.duration}</Text>
               </View>
               <View style={styles.statItem}>
-                <Play size={16} color="#6B7280" />
+                <Play size={16} color={Colors.textSubtle} />
                 <Text style={styles.statText}>{series.tests} Tests</Text>
               </View>
               <View style={styles.statItem}>
-                <Users size={16} color="#6B7280" />
+                <Users size={16} color={Colors.textSubtle} />
                 <Text style={styles.statText}>{series.freeTests} Free</Text>
               </View>
             </View>
@@ -221,7 +227,7 @@ export default function TestSeriesScreen() {
                     style={styles.purchaseButton}
                     onPress={() => handlePurchase(series.id)}
                   >
-                    <Lock size={16} color="#FFFFFF" />
+                    <Lock size={16} color={Colors.white} />
                     <Text style={styles.purchaseButtonText}>Purchase</Text>
                   </TouchableOpacity>
                 )}
@@ -234,7 +240,7 @@ export default function TestSeriesScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (Colors: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,

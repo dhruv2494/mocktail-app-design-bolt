@@ -4,9 +4,20 @@ import { StatusBar } from 'expo-status-bar';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 import Toast from 'react-native-toast-message';
 import { toastConfig } from '@/toastConfig';
+import { Provider } from 'react-redux';
+import { store } from '@/store/store';
+import { useAuth } from '@/hooks/useAuth';
+import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
+import { LanguageProvider } from '@/contexts/LanguageContext';
 
-export default function RootLayout() {
+function AppContent() {
   useFrameworkReady();
+  const { initializeAuthState } = useAuth();
+  const { isDarkMode } = useTheme();
+
+  useEffect(() => {
+    initializeAuthState();
+  }, [initializeAuthState]);
 
   return (
     <>
@@ -17,7 +28,19 @@ export default function RootLayout() {
         <Stack.Screen name="+not-found" />
       </Stack>
       <Toast config={toastConfig} position="top" />
-      <StatusBar style="auto" />
+      <StatusBar style={isDarkMode ? "light" : "dark"} />
     </>
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <Provider store={store}>
+      <ThemeProvider>
+        <LanguageProvider>
+          <AppContent />
+        </LanguageProvider>
+      </ThemeProvider>
+    </Provider>
   );
 }

@@ -4,6 +4,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Clock, Flag, ChevronLeft, ChevronRight, Grid3x3 as Grid3X3, Pause, Play, Globe, BookOpen } from 'lucide-react-native';
 import { router } from 'expo-router';
+import { getTheme } from '@/theme';
+import { useTheme } from '@/contexts/ThemeContext';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { LanguageSelector } from '@/components/shared';
 
 interface Question {
   id: number;
@@ -18,12 +22,25 @@ interface Question {
 
 export default function QuizScreen() {
   const [currentQuestion, setCurrentQuestion] = useState(0);
+  const [selectedLanguage, setSelectedLanguage] = useState('English');
+  const [isPaused, setIsPaused] = useState(false);
+  const [canPause, setCanPause] = useState(true); // Some tests allow pause, others don't
+  const { isDarkMode } = useTheme();
+  const Colors = getTheme(isDarkMode);
+  const { t } = useLanguage();
   const [selectedAnswers, setSelectedAnswers] = useState<{ [key: number]: number }>({});
   const [flaggedQuestions, setFlaggedQuestions] = useState<Set<number>>(new Set());
   const [timeRemaining, setTimeRemaining] = useState(3600); // 60 minutes
-  const [isPaused, setIsPaused] = useState(false);
   const [showGrid, setShowGrid] = useState(false);
-  const [selectedLanguage, setSelectedLanguage] = useState('English');
+  
+  const availableLanguages = ['English', 'Hindi', 'Kannada', 'Telugu'];
+  
+  const testInfo = {
+    title: 'PSI Mock Test 1',
+    canPause: true, // Some tests like final exams don't allow pause
+    isOneTime: false, // One-time completion tests
+    multiLanguage: true
+  };
 
   const questions: Question[] = [
     {
@@ -134,10 +151,10 @@ export default function QuizScreen() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'answered': return '#10B981';
-      case 'flagged': return '#F59E0B';
-      case 'current': return '#3B82F6';
-      default: return '#E5E7EB';
+      case 'answered': return Colors.success;
+      case 'flagged': return Colors.warning;
+      case 'current': return Colors.primary;
+      default: return Colors.muted;
     }
   };
 
@@ -152,19 +169,19 @@ export default function QuizScreen() {
       
       <View style={styles.legendContainer}>
         <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: '#10B981' }]} />
+          <View style={[styles.legendDot, { backgroundColor: Colors.success }]} />
           <Text style={styles.legendText}>Answered</Text>
         </View>
         <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: '#F59E0B' }]} />
+          <View style={[styles.legendDot, { backgroundColor: Colors.warning }]} />
           <Text style={styles.legendText}>Flagged</Text>
         </View>
         <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: '#3B82F6' }]} />
+          <View style={[styles.legendDot, { backgroundColor: Colors.primary }]} />
           <Text style={styles.legendText}>Current</Text>
         </View>
         <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: '#E5E7EB' }]} />
+          <View style={[styles.legendDot, { backgroundColor: Colors.muted }]} />
           <Text style={styles.legendText}>Unanswered</Text>
         </View>
       </View>
@@ -184,7 +201,7 @@ export default function QuizScreen() {
           >
             <Text style={[
               styles.gridItemText,
-              getQuestionStatus(index) === 'unanswered' && { color: '#6B7280' }
+              getQuestionStatus(index) === 'unanswered' && { color: Colors.textSubtle }
             ]}>
               {index + 1}
             </Text>
@@ -202,6 +219,8 @@ export default function QuizScreen() {
     );
   }
 
+  const styles = getStyles(Colors);
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
@@ -211,7 +230,7 @@ export default function QuizScreen() {
             style={styles.backButton}
             onPress={() => router.back()}
           >
-            <ChevronLeft size={24} color="#374151" />
+            <ChevronLeft size={24} color={Colors.textPrimary} />
           </TouchableOpacity>
           <View>
             <Text style={styles.testTitle}>PSI Mock Test 1</Text>
@@ -222,22 +241,14 @@ export default function QuizScreen() {
         </View>
         
         <View style={styles.headerRight}>
-          <TouchableOpacity 
-            style={styles.languageButton}
-            onPress={() => {
-              // Show language selector
-            }}
-          >
-            <Globe size={16} color="#6B7280" />
-            <Text style={styles.languageText}>{selectedLanguage}</Text>
-          </TouchableOpacity>
+          <LanguageSelector />
         </View>
       </View>
 
       {/* Timer and Controls */}
       <View style={styles.controlsContainer}>
         <View style={styles.timerContainer}>
-          <Clock size={16} color={timeRemaining < 300 ? '#DC2626' : '#6B7280'} />
+          <Clock size={16} color={timeRemaining < 300 ? Colors.danger : Colors.textSubtle} />
           <Text style={[
             styles.timerText,
             timeRemaining < 300 && styles.timerWarning
@@ -252,9 +263,9 @@ export default function QuizScreen() {
             onPress={handlePauseResume}
           >
             {isPaused ? (
-              <Play size={16} color="#6B7280" />
+              <Play size={16} color={Colors.textSubtle} />
             ) : (
-              <Pause size={16} color="#6B7280" />
+              <Pause size={16} color={Colors.textSubtle} />
             )}
           </TouchableOpacity>
           
@@ -262,7 +273,7 @@ export default function QuizScreen() {
             style={styles.controlButton}
             onPress={() => setShowGrid(true)}
           >
-            <Grid3X3 size={16} color="#6B7280" />
+            <Grid3X3 size={16} color={Colors.textSubtle} />
           </TouchableOpacity>
           
           <TouchableOpacity 
@@ -274,8 +285,8 @@ export default function QuizScreen() {
           >
             <Flag 
               size={16} 
-              color={flaggedQuestions.has(currentQuestion) ? '#F59E0B' : '#6B7280'} 
-              fill={flaggedQuestions.has(currentQuestion) ? '#F59E0B' : 'none'}
+              color={flaggedQuestions.has(currentQuestion) ? Colors.warning : Colors.textSubtle} 
+              fill={flaggedQuestions.has(currentQuestion) ? Colors.warning : 'none'}
             />
           </TouchableOpacity>
         </View>
@@ -286,18 +297,18 @@ export default function QuizScreen() {
         <View style={styles.questionContainer}>
           <View style={styles.questionHeader}>
             <View style={styles.subjectBadge}>
-              <BookOpen size={12} color="#3B82F6" />
+              <BookOpen size={12} color={Colors.primary} />
               <Text style={styles.subjectText}>{questions[currentQuestion].subject}</Text>
             </View>
             <View style={[
               styles.difficultyBadge,
-              { backgroundColor: questions[currentQuestion].difficulty === 'Easy' ? '#D1FAE5' : 
-                                 questions[currentQuestion].difficulty === 'Medium' ? '#FEF3C7' : '#FEE2E2' }
+              { backgroundColor: questions[currentQuestion].difficulty === 'Easy' ? Colors.badgeSuccessBg : 
+                                 questions[currentQuestion].difficulty === 'Medium' ? Colors.premiumBadge : Colors.badgeDangerBg }
             ]}>
               <Text style={[
                 styles.difficultyText,
-                { color: questions[currentQuestion].difficulty === 'Easy' ? '#065F46' : 
-                         questions[currentQuestion].difficulty === 'Medium' ? '#92400E' : '#991B1B' }
+                { color: questions[currentQuestion].difficulty === 'Easy' ? Colors.success : 
+                         questions[currentQuestion].difficulty === 'Medium' ? Colors.premiumText : Colors.danger }
               ]}>
                 {questions[currentQuestion].difficulty}
               </Text>
@@ -352,7 +363,7 @@ export default function QuizScreen() {
           onPress={() => setCurrentQuestion(prev => Math.max(0, prev - 1))}
           disabled={currentQuestion === 0}
         >
-          <ChevronLeft size={20} color={currentQuestion === 0 ? '#9CA3AF' : '#374151'} />
+          <ChevronLeft size={20} color={currentQuestion === 0 ? Colors.gray400 : Colors.textPrimary} />
           <Text style={[
             styles.navButtonText,
             currentQuestion === 0 && styles.navButtonTextDisabled
@@ -367,7 +378,7 @@ export default function QuizScreen() {
             onPress={handleSubmitTest}
           >
             <LinearGradient
-              colors={['#DC2626', '#B91C1C']}
+              colors={[Colors.danger, Colors.danger]}
               style={styles.submitGradient}
             >
               <Text style={styles.submitButtonText}>Submit Test</Text>
@@ -379,7 +390,7 @@ export default function QuizScreen() {
             onPress={() => setCurrentQuestion(prev => Math.min(questions.length - 1, prev + 1))}
           >
             <Text style={styles.navButtonText}>Next</Text>
-            <ChevronRight size={20} color="#374151" />
+            <ChevronRight size={20} color={Colors.textPrimary} />
           </TouchableOpacity>
         )}
       </View>
@@ -387,10 +398,10 @@ export default function QuizScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (Colors: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: Colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -398,9 +409,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.cardBackground,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: Colors.muted,
   },
   headerLeft: {
     flexDirection: 'row',
@@ -414,11 +425,11 @@ const styles = StyleSheet.create({
   testTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#111827',
+    color: Colors.textPrimary,
   },
   questionCounter: {
     fontSize: 12,
-    color: '#6B7280',
+    color: Colors.textSubtle,
     marginTop: 2,
   },
   headerRight: {
@@ -430,12 +441,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 12,
     paddingVertical: 6,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: Colors.light,
     borderRadius: 8,
   },
   languageText: {
     fontSize: 12,
-    color: '#6B7280',
+    color: Colors.textSubtle,
     marginLeft: 4,
   },
   controlsContainer: {
@@ -444,9 +455,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 12,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.cardBackground,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: Colors.muted,
   },
   timerContainer: {
     flexDirection: 'row',
@@ -455,35 +466,36 @@ const styles = StyleSheet.create({
   timerText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#111827',
+    color: Colors.textPrimary,
     marginLeft: 6,
   },
   timerWarning: {
-    color: '#DC2626',
+    color: Colors.danger,
   },
   controlButtons: {
     flexDirection: 'row',
-    gap: 8,
+    marginHorizontal: -4,
   },
   controlButton: {
     padding: 8,
     borderRadius: 8,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: Colors.light,
+    margin: 4,
   },
   flaggedButton: {
-    backgroundColor: '#FEF3C7',
+    backgroundColor: Colors.premiumBadge,
   },
   content: {
     flex: 1,
     paddingHorizontal: 20,
   },
   questionContainer: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.cardBackground,
     borderRadius: 16,
     padding: 20,
     marginTop: 16,
     marginBottom: 16,
-    shadowColor: '#000',
+    shadowColor: Colors.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -498,14 +510,14 @@ const styles = StyleSheet.create({
   subjectBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#EEF2FF',
+    backgroundColor: Colors.chip,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 8,
   },
   subjectText: {
     fontSize: 12,
-    color: '#3B82F6',
+    color: Colors.primary,
     fontWeight: '500',
     marginLeft: 4,
   },
@@ -521,7 +533,7 @@ const styles = StyleSheet.create({
   questionText: {
     fontSize: 18,
     fontWeight: '500',
-    color: '#111827',
+    color: Colors.textPrimary,
     lineHeight: 26,
   },
   optionsContainer: {
@@ -530,50 +542,50 @@ const styles = StyleSheet.create({
   optionButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.cardBackground,
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
     borderWidth: 2,
-    borderColor: '#E5E7EB',
-    shadowColor: '#000',
+    borderColor: Colors.muted,
+    shadowColor: Colors.shadow,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 2,
     elevation: 2,
   },
   selectedOption: {
-    borderColor: '#3B82F6',
-    backgroundColor: '#EEF2FF',
+    borderColor: Colors.primary,
+    backgroundColor: Colors.chip,
   },
   optionIndicator: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: Colors.light,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
   },
   selectedIndicator: {
-    backgroundColor: '#3B82F6',
+    backgroundColor: Colors.primary,
   },
   optionLetter: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#6B7280',
+    color: Colors.textSubtle,
   },
   selectedOptionLetter: {
-    color: '#FFFFFF',
+    color: Colors.white,
   },
   optionText: {
     fontSize: 16,
-    color: '#111827',
+    color: Colors.textPrimary,
     flex: 1,
     lineHeight: 22,
   },
   selectedOptionText: {
-    color: '#1D4ED8',
+    color: Colors.primaryLight,
     fontWeight: '500',
   },
   navigationContainer: {
@@ -581,9 +593,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.cardBackground,
     borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
+    borderTopColor: Colors.muted,
   },
   navButton: {
     flexDirection: 'row',
@@ -591,7 +603,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 12,
     borderRadius: 8,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: Colors.light,
   },
   navButtonDisabled: {
     opacity: 0.5,
@@ -599,10 +611,10 @@ const styles = StyleSheet.create({
   navButtonText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#374151',
+    color: Colors.textPrimary,
   },
   navButtonTextDisabled: {
-    color: '#9CA3AF',
+    color: Colors.gray400,
   },
   submitButton: {
     borderRadius: 8,
@@ -615,7 +627,7 @@ const styles = StyleSheet.create({
   submitButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: Colors.white,
   },
   gridContainer: {
     flex: 1,
@@ -630,22 +642,23 @@ const styles = StyleSheet.create({
   gridTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#111827',
+    color: Colors.textPrimary,
   },
   gridClose: {
     fontSize: 16,
-    color: '#3B82F6',
+    color: Colors.primary,
     fontWeight: '500',
   },
   legendContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     marginBottom: 20,
-    gap: 16,
+    marginHorizontal: -8,
   },
   legendItem: {
     flexDirection: 'row',
     alignItems: 'center',
+    margin: 8,
   },
   legendDot: {
     width: 12,
@@ -655,12 +668,12 @@ const styles = StyleSheet.create({
   },
   legendText: {
     fontSize: 12,
-    color: '#6B7280',
+    color: Colors.textSubtle,
   },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    marginHorizontal: -6,
   },
   gridItem: {
     width: 48,
@@ -668,10 +681,11 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
+    margin: 6,
   },
   gridItemText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: Colors.white,
   },
 });

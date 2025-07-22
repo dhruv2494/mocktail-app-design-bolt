@@ -4,11 +4,16 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { User, Settings, Bell, Shield, CircleHelp as HelpCircle, LogOut, ChevronRight, Trophy, BookOpen, Clock, Target, Star, Download, Globe, Moon } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { Colors } from '@/theme';
+import { getTheme } from '@/theme';
+import { useTheme } from '@/contexts/ThemeContext';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { LanguageSelector } from '@/components/shared';
 
 export default function ProfileScreen() {
   const [notificationsEnabled, setNotificationsEnabled] = React.useState(true);
-  const [darkModeEnabled, setDarkModeEnabled] = React.useState(false);
+  const { isDarkMode, toggleTheme } = useTheme();
+  const { t, language } = useLanguage();
+  const Colors = getTheme(isDarkMode);
 
   const userStats = {
     testsCompleted: 45,
@@ -29,14 +34,14 @@ export default function ProfileScreen() {
   const menuItems = [
     {
       id: 1,
-      title: 'Account Settings',
+      title: t.profile.settings,
       icon: User,
       route: '/account-settings',
       description: 'Manage your personal information',
     },
     {
       id: 2,
-      title: 'Notifications',
+      title: t.profile.notifications,
       icon: Bell,
       route: '/notifications',
       description: 'Configure notification preferences',
@@ -46,21 +51,22 @@ export default function ProfileScreen() {
     },
     {
       id: 3,
-      title: 'Language',
+      title: t.profile.language,
       icon: Globe,
       route: '/language',
       description: 'Change app language',
-      rightText: 'English',
+      hasCustomAction: true,
+      customComponent: 'language',
     },
     {
       id: 4,
-      title: 'Dark Mode',
+      title: t.profile.darkMode,
       icon: Moon,
       route: '/theme',
       description: 'Toggle dark mode',
       hasSwitch: true,
-      switchValue: darkModeEnabled,
-      onSwitchChange: setDarkModeEnabled,
+      switchValue: isDarkMode,
+      onSwitchChange: toggleTheme,
     },
     {
       id: 5,
@@ -71,14 +77,14 @@ export default function ProfileScreen() {
     },
     {
       id: 6,
-      title: 'Privacy & Security',
+      title: t.profile.privacy,
       icon: Shield,
       route: '/privacy',
       description: 'Privacy settings and security',
     },
     {
       id: 7,
-      title: 'Help & Support',
+      title: t.profile.help,
       icon: HelpCircle,
       route: '/help',
       description: 'Get help and contact support',
@@ -94,6 +100,8 @@ export default function ProfileScreen() {
     router.push('/(auth)/login');
     console.log('Logging out...');
   };
+
+  const styles = getStyles(Colors);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -209,6 +217,8 @@ export default function ProfileScreen() {
                     trackColor={{ false: '#E5E7EB', true: '#3B82F6' }}
                     thumbColor={item.switchValue ? '#FFFFFF' : '#FFFFFF'}
                   />
+                ) : item.customComponent === 'language' ? (
+                  <LanguageSelector showIcon={false} showText={true} />
                 ) : item.rightText ? (
                   <Text style={styles.menuItemRightText}>{item.rightText}</Text>
                 ) : (
@@ -236,7 +246,7 @@ export default function ProfileScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (Colors: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,

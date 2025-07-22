@@ -1,10 +1,12 @@
-import { useEffect } from 'react';
+import React from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
+import { useTheme } from '@/contexts/ThemeContext';
 
 export default function AuthLayout() {
   useFrameworkReady();
+  const { isDarkMode } = useTheme();
 
   return (
     <>
@@ -15,7 +17,7 @@ export default function AuthLayout() {
         <Stack.Screen name="otp-verify" />
         <Stack.Screen name="update-password" />
       </Stack>
-      <StatusBar style="auto" />
+      <StatusBar style={isDarkMode ? "light" : "dark"} />
     </>
   );
 }
