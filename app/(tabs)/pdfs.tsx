@@ -5,15 +5,23 @@ import { Search, Download, Eye, FileText, Calendar, Filter, Star } from 'lucide-
 import { router } from 'expo-router';
 import { getTheme } from '@/theme';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function PDFsScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   
   const { isDarkMode } = useTheme();
+  const { t } = useLanguage();
   const Colors = getTheme(isDarkMode);
 
-  const categories = ['All', 'Study Material', 'Previous Papers', 'Solutions', 'Notes'];
+  const categories = [
+    { key: 'All', label: t.pdfs.categories.all },
+    { key: 'Study Material', label: t.pdfs.categories.studyMaterial },
+    { key: 'Previous Papers', label: t.pdfs.categories.previousPapers },
+    { key: 'Solutions', label: t.pdfs.categories.solutions },
+    { key: 'Notes', label: t.pdfs.categories.notes }
+  ];
 
   const pdfData = [
     {
@@ -99,7 +107,8 @@ export default function PDFsScreen() {
   const filteredPDFs = pdfData.filter(pdf => {
     const matchesSearch = pdf.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          pdf.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
-    const matchesCategory = selectedCategory === 'All' || pdf.category === selectedCategory;
+    const categoryKey = categories.find(c => c.key === selectedCategory)?.key;
+    const matchesCategory = categoryKey === 'All' || pdf.category === categoryKey;
     return matchesSearch && matchesCategory;
   });
 
@@ -127,7 +136,7 @@ export default function PDFsScreen() {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Study PDFs</Text>
+        <Text style={styles.headerTitle}>{t.pdfs.title}</Text>
         <TouchableOpacity style={styles.filterButton}>
           <Filter size={20} color="#374151" />
         </TouchableOpacity>
@@ -139,7 +148,7 @@ export default function PDFsScreen() {
           <Search size={20} color="#6B7280" />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search PDFs, topics, or tags..."
+            placeholder={t.pdfs.searchPlaceholder}
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
@@ -154,18 +163,18 @@ export default function PDFsScreen() {
       >
         {categories.map((category) => (
           <TouchableOpacity
-            key={category}
+            key={category.key}
             style={[
               styles.categoryChip,
-              selectedCategory === category && styles.categoryChipActive
+              selectedCategory === category.key && styles.categoryChipActive
             ]}
-            onPress={() => setSelectedCategory(category)}
+            onPress={() => setSelectedCategory(category.key)}
           >
             <Text style={[
               styles.categoryText,
-              selectedCategory === category && styles.categoryTextActive
+              selectedCategory === category.key && styles.categoryTextActive
             ]}>
-              {category}
+              {category.label}
             </Text>
           </TouchableOpacity>
         ))}
@@ -186,12 +195,12 @@ export default function PDFsScreen() {
                   <View style={styles.pdfMeta}>
                     <Text style={styles.pdfSize}>{pdf.size}</Text>
                     <Text style={styles.pdfSeparator}>•</Text>
-                    <Text style={styles.pdfPages}>{pdf.pages} pages</Text>
+                    <Text style={styles.pdfPages}>{pdf.pages} {t.pdfs.pages}</Text>
                     {pdf.isPremium && (
                       <>
                         <Text style={styles.pdfSeparator}>•</Text>
                         <View style={styles.premiumBadge}>
-                          <Text style={styles.premiumText}>Premium</Text>
+                          <Text style={styles.premiumText}>{t.pdfs.premium}</Text>
                         </View>
                       </>
                     )}
@@ -221,7 +230,7 @@ export default function PDFsScreen() {
             <View style={styles.statsContainer}>
               <View style={styles.statItem}>
                 <Download size={14} color="#6B7280" />
-                <Text style={styles.statText}>{pdf.downloads} downloads</Text>
+                <Text style={styles.statText}>{pdf.downloads} {t.pdfs.downloads}</Text>
               </View>
               <View style={styles.statItem}>
                 <Calendar size={14} color="#6B7280" />
@@ -236,7 +245,7 @@ export default function PDFsScreen() {
                 onPress={() => handlePreview(pdf.id)}
               >
                 <Eye size={16} color={Colors.blue500} />
-                <Text style={styles.previewButtonText}>Preview</Text>
+                <Text style={styles.previewButtonText}>{t.pdfs.preview}</Text>
               </TouchableOpacity>
               
               <TouchableOpacity 
@@ -248,7 +257,7 @@ export default function PDFsScreen() {
               >
                 <Download size={16} color={Colors.white} />
                 <Text style={styles.downloadButtonText}>
-                  {pdf.isPremium ? 'Premium Download' : 'Download'}
+                  {pdf.isPremium ? t.pdfs.premiumDownload : t.pdfs.download}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -259,9 +268,9 @@ export default function PDFsScreen() {
         {filteredPDFs.length === 0 && (
           <View style={styles.emptyState}>
             <FileText size={48} color={Colors.gray400} />
-            <Text style={styles.emptyTitle}>No PDFs Found</Text>
+            <Text style={styles.emptyTitle}>{t.pdfs.noPDFsFound}</Text>
             <Text style={styles.emptyDescription}>
-              Try adjusting your search or category filter
+              {t.pdfs.tryAdjusting}
             </Text>
           </View>
         )}

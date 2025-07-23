@@ -6,13 +6,21 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { getTheme } from '@/theme';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function FreeTestsScreen() {
   const { isDarkMode } = useTheme();
+  const { t } = useLanguage();
   const Colors = getTheme(isDarkMode);
   const [selectedCategory, setSelectedCategory] = useState('All');
 
-  const categories = ['All', 'Mock Tests', 'PYQs', 'Topic Wise', 'Quick Tests'];
+  const categories = [
+    { key: 'All', label: t.freeTests.categories.all },
+    { key: 'Mock Tests', label: t.freeTests.categories.mockTests },
+    { key: 'PYQs', label: t.freeTests.categories.pyqs },
+    { key: 'Topic Wise', label: t.freeTests.categories.topicWise },
+    { key: 'Quick Tests', label: t.freeTests.categories.quickTests }
+  ];
 
   const freeTests = [
     {
@@ -74,11 +82,14 @@ export default function FreeTestsScreen() {
 
   const filteredTests = selectedCategory === 'All' 
     ? freeTests 
-    : freeTests.filter(test => 
-        selectedCategory === 'PYQs' 
-          ? test.type === 'PYQ' 
-          : test.type.includes(selectedCategory.replace(' Tests', ''))
-      );
+    : freeTests.filter(test => {
+        const categoryKey = categories.find(c => c.key === selectedCategory)?.key;
+        if (categoryKey === 'PYQs') return test.type === 'PYQ';
+        if (categoryKey === 'Mock Tests') return test.type === 'Mock Test';
+        if (categoryKey === 'Topic Wise') return test.type === 'Topic Wise';
+        if (categoryKey === 'Quick Tests') return test.type === 'Quick Test';
+        return false;
+      });
 
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
@@ -97,8 +108,8 @@ export default function FreeTestsScreen() {
         {/* Header */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.headerTitle}>Free Tests</Text>
-            <Text style={styles.headerSubtitle}>Practice for free and evaluate your preparation</Text>
+            <Text style={styles.headerTitle}>{t.freeTests.title}</Text>
+            <Text style={styles.headerSubtitle}>{t.freeTests.subtitle}</Text>
           </View>
         </View>
 
@@ -111,18 +122,18 @@ export default function FreeTestsScreen() {
         >
           {categories.map((category) => (
             <TouchableOpacity
-              key={category}
+              key={category.key}
               style={[
                 styles.categoryButton,
-                selectedCategory === category && styles.activeCategoryButton
+                selectedCategory === category.key && styles.activeCategoryButton
               ]}
-              onPress={() => setSelectedCategory(category)}
+              onPress={() => setSelectedCategory(category.key)}
             >
               <Text style={[
                 styles.categoryText,
-                selectedCategory === category && styles.activeCategoryText
+                selectedCategory === category.key && styles.activeCategoryText
               ]}>
-                {category}
+                {category.label}
               </Text>
             </TouchableOpacity>
           ))}
@@ -131,7 +142,7 @@ export default function FreeTestsScreen() {
         {/* Free Tests List */}
         <View style={styles.testsContainer}>
           <Text style={styles.sectionTitle}>
-            {selectedCategory === 'All' ? 'All Free Tests' : selectedCategory} ({filteredTests.length})
+            {selectedCategory === 'All' ? t.freeTests.allFreeTests : categories.find(c => c.key === selectedCategory)?.label} ({filteredTests.length})
           </Text>
           
           {filteredTests.map((test) => (
@@ -172,15 +183,15 @@ export default function FreeTestsScreen() {
               <View style={styles.testStats}>
                 <View style={styles.statItem}>
                   <BookOpen size={16} color={Colors.textSubtle} />
-                  <Text style={styles.statText}>{test.questions} Questions</Text>
+                  <Text style={styles.statText}>{test.questions} {t.freeTests.questions}</Text>
                 </View>
                 <View style={styles.statItem}>
                   <Clock size={16} color={Colors.textSubtle} />
-                  <Text style={styles.statText}>{test.duration} min</Text>
+                  <Text style={styles.statText}>{test.duration} {t.freeTests.minutes}</Text>
                 </View>
                 <View style={styles.statItem}>
                   <Users size={16} color={Colors.textSubtle} />
-                  <Text style={styles.statText}>{test.attempts} attempts</Text>
+                  <Text style={styles.statText}>{test.attempts} {t.freeTests.attempts}</Text>
                 </View>
                 <View style={[styles.difficultyBadge, { borderColor: getDifficultyColor(test.difficulty) }]}>
                   <Text style={[styles.difficultyText, { color: getDifficultyColor(test.difficulty) }]}>
@@ -196,7 +207,7 @@ export default function FreeTestsScreen() {
                 end={{ x: 1, y: 0 }}
               >
                 <Play size={16} color={Colors.white} />
-                <Text style={styles.startButtonText}>Start Test</Text>
+                <Text style={styles.startButtonText}>{t.freeTests.startTest}</Text>
               </LinearGradient>
             </TouchableOpacity>
           ))}

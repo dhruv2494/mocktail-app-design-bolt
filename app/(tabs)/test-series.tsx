@@ -5,15 +5,23 @@ import { Search, Filter, Star, Clock, Users, Play, Lock, CircleCheck as CheckCir
 import { router } from 'expo-router';
 import { getTheme } from '@/theme';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function TestSeriesScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   
   const { isDarkMode } = useTheme();
+  const { t } = useLanguage();
   const Colors = getTheme(isDarkMode);
 
-  const categories = ['All', 'Exam Wise', 'Subject Wise', 'NCERT', 'Free'];
+  const categories = [
+    { key: 'All', label: t.testSeries.categories.all },
+    { key: 'Exam Wise', label: t.testSeries.categories.examWise },
+    { key: 'Subject Wise', label: t.testSeries.categories.subjectWise },
+    { key: 'NCERT', label: t.testSeries.categories.ncert },
+    { key: 'Free', label: t.testSeries.categories.free },
+  ];
 
   const testSeries = [
     {
@@ -98,7 +106,7 @@ export default function TestSeriesScreen() {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Test Series</Text>
+        <Text style={styles.headerTitle}>{t.testSeries.title}</Text>
         <TouchableOpacity style={styles.filterButton}>
           <Filter size={20} color={Colors.textPrimary} />
         </TouchableOpacity>
@@ -110,7 +118,7 @@ export default function TestSeriesScreen() {
           <Search size={20} color={Colors.textSubtle} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search test series..."
+            placeholder={t.testSeries.searchPlaceholder}
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
@@ -125,18 +133,18 @@ export default function TestSeriesScreen() {
       >
         {categories.map((category) => (
           <TouchableOpacity
-            key={category}
+            key={category.key}
             style={[
               styles.categoryChip,
-              selectedCategory === category && styles.categoryChipActive
+              selectedCategory === category.key && styles.categoryChipActive
             ]}
-            onPress={() => setSelectedCategory(category)}
+            onPress={() => setSelectedCategory(category.key)}
           >
             <Text style={[
               styles.categoryText,
-              selectedCategory === category && styles.categoryTextActive
+              selectedCategory === category.key && styles.categoryTextActive
             ]}>
-              {category}
+              {category.label}
             </Text>
           </TouchableOpacity>
         ))}
@@ -153,13 +161,13 @@ export default function TestSeriesScreen() {
                 <View style={styles.ratingContainer}>
                   <Star size={14} color={Colors.warning} fill={Colors.warning} />
                   <Text style={styles.rating}>{series.rating}</Text>
-                  <Text style={styles.studentsCount}>({series.students} students)</Text>
+                  <Text style={styles.studentsCount}>({series.students} {t.testSeries.students})</Text>
                 </View>
               </View>
               {series.isPurchased && (
                 <View style={styles.purchasedBadge}>
                   <CheckCircle size={16} color={Colors.success} />
-                  <Text style={styles.purchasedText}>Purchased</Text>
+                  <Text style={styles.purchasedText}>{t.testSeries.purchased}</Text>
                 </View>
               )}
             </View>
@@ -175,7 +183,7 @@ export default function TestSeriesScreen() {
                 </View>
               ))}
               {series.topics.length > 3 && (
-                <Text style={styles.moreTopics}>+{series.topics.length - 3} more</Text>
+                <Text style={styles.moreTopics}>+{series.topics.length - 3} {t.testSeries.more}</Text>
               )}
             </View>
 
@@ -187,11 +195,11 @@ export default function TestSeriesScreen() {
               </View>
               <View style={styles.statItem}>
                 <Play size={16} color={Colors.textSubtle} />
-                <Text style={styles.statText}>{series.tests} Tests</Text>
+                <Text style={styles.statText}>{series.tests} {t.testSeries.tests}</Text>
               </View>
               <View style={styles.statItem}>
                 <Users size={16} color={Colors.textSubtle} />
-                <Text style={styles.statText}>{series.freeTests} Free</Text>
+                <Text style={styles.statText}>{series.freeTests} {t.testSeries.freeLabel}</Text>
               </View>
             </View>
 
@@ -202,7 +210,7 @@ export default function TestSeriesScreen() {
                 <Text style={styles.originalPrice}>₹{series.originalPrice}</Text>
                 <View style={styles.discountBadge}>
                   <Text style={styles.discountText}>
-                    {Math.round((1 - series.price / series.originalPrice) * 100)}% OFF
+                    {Math.round((1 - series.price / series.originalPrice) * 100)}% {t.testSeries.off}
                   </Text>
                 </View>
               </View>
@@ -212,7 +220,7 @@ export default function TestSeriesScreen() {
                   style={styles.freeTestButton}
                   onPress={() => handleStartTest(series.id)}
                 >
-                  <Text style={styles.freeTestText}>Try Free</Text>
+                  <Text style={styles.freeTestText}>{t.testSeries.tryFree}</Text>
                 </TouchableOpacity>
                 
                 {series.isPurchased ? (
@@ -220,7 +228,7 @@ export default function TestSeriesScreen() {
                     style={styles.startButton}
                     onPress={() => handleStartTest(series.id)}
                   >
-                    <Text style={styles.startButtonText}>Start Tests</Text>
+                    <Text style={styles.startButtonText}>{t.testSeries.startTests}</Text>
                   </TouchableOpacity>
                 ) : (
                   <TouchableOpacity 
@@ -228,7 +236,7 @@ export default function TestSeriesScreen() {
                     onPress={() => handlePurchase(series.id)}
                   >
                     <Lock size={16} color={Colors.white} />
-                    <Text style={styles.purchaseButtonText}>Purchase</Text>
+                    <Text style={styles.purchaseButtonText}>{t.testSeries.purchase}</Text>
                   </TouchableOpacity>
                 )}
               </View>
@@ -416,7 +424,7 @@ const getStyles = (Colors: any) => StyleSheet.create({
   actionContainer: {
     flexDirection: 'column',
     justifyContent: 'space-between',
-    gap: 8,
+    marginVertical: -4,
   },
   priceContainer: {
     flexDirection: 'row',
@@ -447,7 +455,7 @@ const getStyles = (Colors: any) => StyleSheet.create({
   },
   buttonContainer: {
     flexDirection: 'row',
-    gap: 8,
+    marginHorizontal: -4,
   },
   freeTestButton: {
     paddingHorizontal: 16,

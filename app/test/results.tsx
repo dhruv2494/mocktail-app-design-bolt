@@ -6,6 +6,7 @@ import { Trophy, Clock, Target, TrendingUp, ChevronRight, Award, Users, BookOpen
 import { router } from 'expo-router';
 import { getTheme } from '@/theme';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 const { width } = Dimensions.get('window');
 
@@ -30,6 +31,7 @@ interface TestResult {
 export default function TestResultsScreen() {
   const [activeTab, setActiveTab] = useState<'overview' | 'analysis'>('overview');
   const { isDarkMode } = useTheme();
+  const { t } = useLanguage();
   const Colors = getTheme(isDarkMode);
 
   const testResult: TestResult = {
@@ -83,9 +85,9 @@ export default function TestResultsScreen() {
   };
 
   const getPerformanceText = (percentage: number) => {
-    if (percentage >= 80) return 'Excellent';
-    if (percentage >= 60) return 'Good';
-    return 'Needs Improvement';
+    if (percentage >= 80) return t.results.excellent;
+    if (percentage >= 60) return t.results.good;
+    return t.results.needsImprovement;
   };
 
   const handleViewSolutions = () => {
@@ -110,13 +112,13 @@ export default function TestResultsScreen() {
         style={styles.header}
       >
         <View style={styles.headerContent}>
-          <Text style={styles.headerTitle}>Test Completed!</Text>
+          <Text style={styles.headerTitle}>{t.results.testCompleted}</Text>
           <Text style={styles.headerSubtitle}>{testResult.testTitle}</Text>
         </View>
         
         <View style={styles.scoreCircle}>
           <Text style={styles.scorePercentage}>{testResult.percentage}%</Text>
-          <Text style={styles.scoreLabel}>Score</Text>
+          <Text style={styles.scoreLabel}>{t.results.score}</Text>
         </View>
       </LinearGradient>
 
@@ -138,7 +140,7 @@ export default function TestResultsScreen() {
           onPress={() => setActiveTab('overview')}
         >
           <Text style={[styles.tabText, activeTab === 'overview' && styles.activeTabText]}>
-            Overview
+            {t.results.overview}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -146,7 +148,7 @@ export default function TestResultsScreen() {
           onPress={() => setActiveTab('analysis')}
         >
           <Text style={[styles.tabText, activeTab === 'analysis' && styles.activeTabText]}>
-            Analysis
+            {t.results.analysis}
           </Text>
         </TouchableOpacity>
       </View>
@@ -159,19 +161,19 @@ export default function TestResultsScreen() {
               <View style={styles.statCard}>
                 <CheckCircle size={24} color={Colors.success} />
                 <Text style={styles.statNumber}>{testResult.correctAnswers}</Text>
-                <Text style={styles.statLabel}>Correct</Text>
+                <Text style={styles.statLabel}>{t.results.correct}</Text>
               </View>
               
               <View style={styles.statCard}>
                 <XCircle size={24} color={Colors.danger} />
                 <Text style={styles.statNumber}>{testResult.incorrectAnswers}</Text>
-                <Text style={styles.statLabel}>Incorrect</Text>
+                <Text style={styles.statLabel}>{t.results.incorrect}</Text>
               </View>
               
               <View style={styles.statCard}>
                 <AlertCircle size={24} color={Colors.warning} />
                 <Text style={styles.statNumber}>{testResult.unanswered}</Text>
-                <Text style={styles.statLabel}>Unanswered</Text>
+                <Text style={styles.statLabel}>{t.results.unanswered}</Text>
               </View>
             </View>
 
@@ -181,21 +183,21 @@ export default function TestResultsScreen() {
                 <View style={styles.detailRow}>
                   <View style={styles.detailItem}>
                     <CheckCircle size={20} color={Colors.primaryLight} />
-                    <Text style={styles.detailLabel}>Correct Answers</Text>
+                    <Text style={styles.detailLabel}>{t.results.correctAnswers}</Text>
                   </View>
                   <Text style={styles.detailValue}>{testResult.correctAnswers}</Text>
                 </View>
                 <View style={styles.detailRow}>
                   <View style={styles.detailItem}>
                     <XCircle size={20} color={Colors.accent} />
-                    <Text style={styles.detailLabel}>Incorrect Answers</Text>
+                    <Text style={styles.detailLabel}>{t.results.incorrectAnswers}</Text>
                   </View>
                   <Text style={styles.detailValue}>{testResult.incorrectAnswers}</Text>
                 </View>
                 <View style={styles.detailRow}>
                   <View style={styles.detailItem}>
                     <AlertCircle size={20} color={Colors.accent} />
-                    <Text style={styles.detailLabel}>Unanswered</Text>
+                    <Text style={styles.detailLabel}>{t.results.unanswered}</Text>
                   </View>
                   <Text style={styles.detailValue}>{testResult.unanswered}</Text>
                 </View>
@@ -203,14 +205,14 @@ export default function TestResultsScreen() {
               <View style={styles.detailRow}>
                 <View style={styles.detailItem}>
                   <Target size={20} color={Colors.primaryLight} />
-                  <Text style={styles.detailLabel}>Marks</Text>
+                  <Text style={styles.detailLabel}>{t.results.marks}</Text>
                 </View>
               </View>
             </View>
 
             {/* Progress Chart */}
             <View style={styles.chartContainer}>
-              <Text style={styles.chartTitle}>Performance Breakdown</Text>
+              <Text style={styles.chartTitle}>{t.results.performanceBreakdown}</Text>
               <View style={styles.progressChart}>
                 <View style={styles.progressBar}>
                   <View 
@@ -245,15 +247,15 @@ export default function TestResultsScreen() {
                 <View style={styles.chartLegend}>
                   <View style={styles.legendItem}>
                     <View style={[styles.legendDot, { backgroundColor: Colors.success }]} />
-                    <Text style={styles.legendText}>Correct ({testResult.correctAnswers})</Text>
+                    <Text style={styles.legendText}>{t.results.correct} ({testResult.correctAnswers})</Text>
                   </View>
                   <View style={styles.legendItem}>
                     <View style={[styles.legendDot, { backgroundColor: Colors.danger }]} />
-                    <Text style={styles.legendText}>Incorrect ({testResult.incorrectAnswers})</Text>
+                    <Text style={styles.legendText}>{t.results.incorrect} ({testResult.incorrectAnswers})</Text>
                   </View>
                   <View style={styles.legendItem}>
                     <View style={[styles.legendDot, { backgroundColor: Colors.warning }]} />
-                    <Text style={styles.legendText}>Unanswered ({testResult.unanswered})</Text>
+                    <Text style={styles.legendText}>{t.results.unanswered} ({testResult.unanswered})</Text>
                   </View>
                 </View>
               </View>
@@ -263,12 +265,12 @@ export default function TestResultsScreen() {
           <>
             {/* Subject-wise Analysis */}
             <View style={styles.analysisContainer}>
-              <Text style={styles.analysisTitle}>Subject-wise Performance</Text>
+              <Text style={styles.analysisTitle}>{t.results.subjectWisePerformance}</Text>
               
               <View style={styles.subjectCard}>
                 <View style={styles.subjectHeader}>
                   <BookOpen size={20} color={Colors.textLink} />
-                  <Text style={styles.subjectName}>General Knowledge</Text>
+                  <Text style={styles.subjectName}>{t.results.subjects.generalKnowledge}</Text>
                 </View>
                 <View style={styles.subjectStats}>
                   <Text style={styles.subjectScore}>18/25</Text>
@@ -282,7 +284,7 @@ export default function TestResultsScreen() {
               <View style={styles.subjectCard}>
                 <View style={styles.subjectHeader}>
                   <BookOpen size={20} color={Colors.textLink} />
-                  <Text style={styles.subjectName}>Mathematics</Text>
+                  <Text style={styles.subjectName}>{t.results.subjects.mathematics}</Text>
                 </View>
                 <View style={styles.subjectStats}>
                   <Text style={styles.subjectScore}>22/25</Text>
@@ -296,7 +298,7 @@ export default function TestResultsScreen() {
               <View style={styles.subjectCard}>
                 <View style={styles.subjectHeader}>
                   <BookOpen size={20} color={Colors.textLink} />
-                  <Text style={styles.subjectName}>Reasoning</Text>
+                  <Text style={styles.subjectName}>{t.results.subjects.reasoning}</Text>
                 </View>
                 <View style={styles.subjectStats}>
                   <Text style={styles.subjectScore}>16/25</Text>
@@ -310,7 +312,7 @@ export default function TestResultsScreen() {
               <View style={styles.subjectCard}>
                 <View style={styles.subjectHeader}>
                   <BookOpen size={20} color={Colors.textLink} />
-                  <Text style={styles.subjectName}>English</Text>
+                  <Text style={styles.subjectName}>{t.results.subjects.english}</Text>
                 </View>
                 <View style={styles.subjectStats}>
                   <Text style={styles.subjectScore}>16/25</Text>
@@ -324,13 +326,13 @@ export default function TestResultsScreen() {
 
             {/* Time Analysis */}
             <View style={styles.timeAnalysisContainer}>
-              <Text style={styles.analysisTitle}>Time Analysis</Text>
+              <Text style={styles.analysisTitle}>{t.results.timeAnalysis}</Text>
               <View style={styles.timeCard}>
-                <Text style={styles.timeLabel}>Average Time per Question</Text>
+                <Text style={styles.timeLabel}>{t.results.avgTimePerQuestion}</Text>
                 <Text style={styles.timeValue}>{Math.round(testResult.timeTaken / testResult.totalQuestions)}s</Text>
               </View>
               <View style={styles.timeCard}>
-                <Text style={styles.timeLabel}>Time Saved</Text>
+                <Text style={styles.timeLabel}>{t.results.timeSaved}</Text>
                 <Text style={styles.timeValue}>{formatTime(testResult.totalTime - testResult.timeTaken)}</Text>
               </View>
             </View>
@@ -342,13 +344,13 @@ export default function TestResultsScreen() {
       <View style={styles.actionContainer}>
         <TouchableOpacity style={styles.actionButton} onPress={handleViewSolutions}>
           <BookOpen size={20} color={Colors.primary} />
-          <Text style={styles.actionButtonText}>View Solutions</Text>
+          <Text style={styles.actionButtonText}>{t.results.viewSolutions}</Text>
           <ChevronRight size={16} color={Colors.primary} />
         </TouchableOpacity>
         
         <TouchableOpacity style={styles.actionButton} onPress={handleViewLeaderboard}>
           <Trophy size={20} color={Colors.primary} />
-          <Text style={styles.actionButtonText}>View Leaderboard</Text>
+          <Text style={styles.actionButtonText}>{t.results.viewLeaderboard}</Text>
           <ChevronRight size={16} color={Colors.primary} />
         </TouchableOpacity>
         
@@ -357,7 +359,7 @@ export default function TestResultsScreen() {
             colors={[Colors.primary, Colors.primaryLight]}
             style={styles.retakeGradient}
           >
-            <Text style={styles.retakeButtonText}>Retake Test</Text>
+            <Text style={styles.retakeButtonText}>{t.results.retakeTest}</Text>
           </LinearGradient>
         </TouchableOpacity>
       </View>

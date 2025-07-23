@@ -165,13 +165,11 @@ Mocktail-app-bolt-design/
 # Continue with pending translation tasks
 # Start with: app/(tabs)/test-series.tsx
 # Follow the established translation pattern
-# Ensure no 'gap' properties are used in styles
 # Test translation switching works properly
 ```
 
 ## IMPORTANT NOTES
 
-- **Never use `gap` property** - causes crashes in React Native
 - **Always test language switching** after implementing translations
 - **Use shared components** instead of creating new layouts
 - **Follow established translation key structure** in en.ts and gu.ts
