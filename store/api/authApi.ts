@@ -32,6 +32,20 @@ export interface ResetPasswordRequest {
   newPassword: string;
 }
 
+export interface ResendOTPRequest {
+  email: string;
+}
+
+export interface User {
+  uuid: string;
+  username: string;
+  email: string;
+  phone?: string;
+  profileImage?: string;
+  isEmailVerified: boolean;
+  created_at: string;
+}
+
 export interface AuthResponse {
   message: string;
   token: string;
@@ -39,6 +53,11 @@ export interface AuthResponse {
 
 export interface MessageResponse {
   message: string;
+}
+
+export interface ProfileResponse {
+  success: boolean;
+  user: User;
 }
 
 export const authApi = createApi({
@@ -113,6 +132,20 @@ export const authApi = createApi({
         body: credentials,
       }),
     }),
+    resendOTP: builder.mutation<MessageResponse, ResendOTPRequest>({
+      query: (credentials) => ({
+        url: '/users/resend-otp',
+        method: 'POST',
+        body: credentials,
+      }),
+    }),
+    getProfile: builder.query<ProfileResponse, void>({
+      query: () => ({
+        url: '/users/profile',
+        method: 'GET',
+      }),
+      providesTags: ['Auth'],
+    }),
   }),
 });
 
@@ -122,4 +155,7 @@ export const {
   useVerifyOTPMutation,
   useForgotPasswordMutation,
   useResetPasswordMutation,
+  useResendOTPMutation,
+  useGetProfileQuery,
+  useLazyGetProfileQuery,
 } = authApi;

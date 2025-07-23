@@ -1,134 +1,135 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput } from 'react-native';
+import React, { useState, useCallback, useMemo } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, RefreshControl, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Search, Download, Eye, FileText, Calendar, Filter, Star } from 'lucide-react-native';
+import { Search, Download, Eye, FileText, Calendar, Filter, Star, AlertCircle } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { getTheme } from '@/theme';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useGetPDFsQuery, useGetPDFDownloadUrlMutation, useIncrementPDFViewMutation, PDFListParams } from '@/store/api/pdfApi';
+import { PDFListSkeleton, CategorySkeleton, SearchSkeleton } from '@/components/shared/SkeletonLoader';
 
 export default function PDFsScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [refreshing, setRefreshing] = useState(false);
   
   const { isDarkMode } = useTheme();
   const { t } = useLanguage();
   const Colors = getTheme(isDarkMode);
 
+  // API queries
+  const queryParams: PDFListParams = useMemo(() => ({
+    page: currentPage,
+    limit: 10,
+    search: searchQuery || undefined,
+    category: selectedCategory !== 'All' ? selectedCategory : undefined,
+    sortBy: 'created_at',
+    sortOrder: 'DESC',
+  }), [currentPage, searchQuery, selectedCategory]);
+
+  const {
+    data: pdfResponse,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useGetPDFsQuery(queryParams);
+
+  const [getPDFDownloadUrl] = useGetPDFDownloadUrlMutation();
+  const [incrementPDFView] = useIncrementPDFViewMutation();
+
   const categories = [
-    { key: 'All', label: t.pdfs.categories.all },
-    { key: 'Study Material', label: t.pdfs.categories.studyMaterial },
-    { key: 'Previous Papers', label: t.pdfs.categories.previousPapers },
-    { key: 'Solutions', label: t.pdfs.categories.solutions },
-    { key: 'Notes', label: t.pdfs.categories.notes }
+    { key: 'All', label: t.pdfs?.categories?.all || 'All' },
+    { key: 'Study Material', label: t.pdfs?.categories?.studyMaterial || 'Study Material' },
+    { key: 'Previous Papers', label: t.pdfs?.categories?.previousPapers || 'Previous Papers' },
+    { key: 'Solutions', label: t.pdfs?.categories?.solutions || 'Solutions' },
+    { key: 'Notes', label: t.pdfs?.categories?.notes || 'Notes' }
   ];
 
-  const pdfData = [
-    {
-      id: 1,
-      title: 'PSI Exam Complete Guide 2024',
-      category: 'Study Material',
-      size: '2.5 MB',
-      pages: 45,
-      downloads: 1250,
-      rating: 4.8,
-      uploadDate: '2024-01-15',
-      description: 'Comprehensive guide covering all topics for PSI examination with detailed explanations and examples.',
-      tags: ['PSI', 'Complete Guide', 'Exam Prep'],
-      isPremium: false,
-    },
-    {
-      id: 2,
-      title: 'Mathematics Formula Sheet',
-      category: 'Notes',
-      size: '1.2 MB',
-      pages: 12,
-      downloads: 2100,
-      rating: 4.9,
-      uploadDate: '2024-01-10',
-      description: 'Essential mathematical formulas and shortcuts for competitive exams.',
-      tags: ['Mathematics', 'Formulas', 'Quick Reference'],
-      isPremium: false,
-    },
-    {
-      id: 3,
-      title: 'PSI Previous Year Papers (2020-2023)',
-      category: 'Previous Papers',
-      size: '3.8 MB',
-      pages: 68,
-      downloads: 890,
-      rating: 4.7,
-      uploadDate: '2024-01-08',
-      description: 'Collection of previous year question papers with detailed solutions.',
-      tags: ['PSI', 'Previous Papers', 'Solutions'],
-      isPremium: true,
-    },
-    {
-      id: 4,
-      title: 'General Knowledge Handbook',
-      category: 'Study Material',
-      size: '4.2 MB',
-      pages: 89,
-      downloads: 1560,
-      rating: 4.6,
-      uploadDate: '2024-01-05',
-      description: 'Comprehensive general knowledge covering current affairs, history, geography, and science.',
-      tags: ['GK', 'Current Affairs', 'Handbook'],
-      isPremium: false,
-    },
-    {
-      id: 5,
-      title: 'English Grammar & Vocabulary',
-      category: 'Study Material',
-      size: '2.1 MB',
-      pages: 34,
-      downloads: 1340,
-      rating: 4.5,
-      uploadDate: '2024-01-03',
-      description: 'Essential English grammar rules and vocabulary for competitive exams.',
-      tags: ['English', 'Grammar', 'Vocabulary'],
-      isPremium: false,
-    },
-    {
-      id: 6,
-      title: 'Reasoning Shortcuts & Tricks',
-      category: 'Notes',
-      size: '1.8 MB',
-      pages: 28,
-      downloads: 1890,
-      rating: 4.8,
-      uploadDate: '2024-01-01',
-      description: 'Quick tricks and shortcuts for solving reasoning problems efficiently.',
-      tags: ['Reasoning', 'Shortcuts', 'Tricks'],
-      isPremium: true,
-    },
-  ];
+  const pdfData = pdfResponse?.data || [];
+  const pagination = pdfResponse?.pagination;
 
-  const filteredPDFs = pdfData.filter(pdf => {
-    const matchesSearch = pdf.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         pdf.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
-    const categoryKey = categories.find(c => c.key === selectedCategory)?.key;
-    const matchesCategory = categoryKey === 'All' || pdf.category === categoryKey;
-    return matchesSearch && matchesCategory;
-  });
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await refetch();
+    } catch (error) {
+      console.error('Error refreshing PDFs:', error);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refetch]);
 
-  const handleDownload = (pdfId: number) => {
-    // Handle PDF download
-    console.log('Downloading PDF:', pdfId);
-  };
+  const handleDownload = useCallback(async (pdfId: string) => {
+    try {
+      const response = await getPDFDownloadUrl(pdfId).unwrap();
+      
+      // In a real app, you would use a file download library like expo-file-system
+      // For now, we'll show an alert with the download URL
+      Alert.alert(
+        'Download Ready',
+        `PDF: ${response.data.filename}\nSize: ${(response.data.size / 1024 / 1024).toFixed(2)} MB`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { 
+            text: 'Download', 
+            onPress: () => {
+              // Here you would implement actual file download
+              console.log('Download URL:', response.data.download_url);
+            }
+          }
+        ]
+      );
+    } catch (error: any) {
+      Alert.alert(
+        'Download Error',
+        error?.data?.message || 'Failed to get download URL'
+      );
+    }
+  }, [getPDFDownloadUrl]);
 
-  const handlePreview = (pdfId: number) => {
-    router.push(`/pdf-viewer?pdfId=${pdfId}`);
-  };
+  const handlePreview = useCallback(async (pdfId: string) => {
+    try {
+      // Increment view count
+      await incrementPDFView(pdfId);
+      
+      // Navigate to PDF viewer
+      router.push(`/pdf-viewer?pdfId=${pdfId}`);
+    } catch (error) {
+      console.error('Error tracking PDF view:', error);
+      // Still navigate even if view tracking fails
+      router.push(`/pdf-viewer?pdfId=${pdfId}`);
+    }
+  }, [incrementPDFView]);
 
-  const formatDate = (dateString: string) => {
+  const formatDate = useCallback((dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', { 
       year: 'numeric', 
       month: 'short', 
       day: 'numeric' 
     });
-  };
+  }, []);
+
+  const formatFileSize = useCallback((bytes: number) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  }, []);
+
+  const handleSearch = useCallback((text: string) => {
+    setSearchQuery(text);
+    setCurrentPage(1); // Reset to first page when searching
+  }, []);
+
+  const handleCategoryChange = useCallback((category: string) => {
+    setSelectedCategory(category);
+    setCurrentPage(1); // Reset to first page when changing category
+  }, []);
 
   const styles = getStyles(Colors);
 
@@ -136,54 +137,89 @@ export default function PDFsScreen() {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>{t.pdfs.title}</Text>
+        <Text style={styles.headerTitle}>{t.pdfs?.title || 'PDFs'}</Text>
         <TouchableOpacity style={styles.filterButton}>
-          <Filter size={20} color="#374151" />
+          <Filter size={20} color={Colors.textSubtle} />
         </TouchableOpacity>
       </View>
 
       {/* Search Bar */}
       <View style={styles.searchContainer}>
-        <View style={styles.searchBar}>
-          <Search size={20} color="#6B7280" />
-          <TextInput
-            style={styles.searchInput}
-            placeholder={t.pdfs.searchPlaceholder}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-        </View>
+        {isLoading && !pdfData.length ? (
+          <SearchSkeleton />
+        ) : (
+          <View style={styles.searchBar}>
+            <Search size={20} color={Colors.textSubtle} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder={t.pdfs?.searchPlaceholder || 'Search PDFs...'}
+              value={searchQuery}
+              onChangeText={handleSearch}
+              placeholderTextColor={Colors.textSubtle}
+            />
+          </View>
+        )}
       </View>
 
       {/* Categories */}
-      <ScrollView 
-        horizontal 
-        showsHorizontalScrollIndicator={false}
-        style={styles.categoriesContainer}
-      >
-        {categories.map((category) => (
-          <TouchableOpacity
-            key={category.key}
-            style={[
-              styles.categoryChip,
-              selectedCategory === category.key && styles.categoryChipActive
-            ]}
-            onPress={() => setSelectedCategory(category.key)}
+      <View style={styles.categoriesContainer}>
+        {isLoading && !pdfData.length ? (
+          <CategorySkeleton />
+        ) : (
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false}
           >
-            <Text style={[
-              styles.categoryText,
-              selectedCategory === category.key && styles.categoryTextActive
-            ]}>
-              {category.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+            {categories.map((category) => (
+              <TouchableOpacity
+                key={category.key}
+                style={[
+                  styles.categoryChip,
+                  selectedCategory === category.key && styles.categoryChipActive
+                ]}
+                onPress={() => handleCategoryChange(category.key)}
+              >
+                <Text style={[
+                  styles.categoryText,
+                  selectedCategory === category.key && styles.categoryTextActive
+                ]}>
+                  {category.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        )}
+      </View>
 
       {/* PDF List */}
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {filteredPDFs.map((pdf) => (
-          <View key={pdf.id} style={styles.pdfCard}>
+      <ScrollView 
+        style={styles.content} 
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={Colors.primaryLight}
+            colors={[Colors.primaryLight]}
+          />
+        }
+      >
+        {isLoading && !pdfData.length ? (
+          <PDFListSkeleton count={5} />
+        ) : isError ? (
+          <View style={styles.errorState}>
+            <AlertCircle size={48} color={Colors.danger} />
+            <Text style={styles.errorTitle}>Failed to load PDFs</Text>
+            <Text style={styles.errorDescription}>
+              {(error as any)?.data?.message || 'Something went wrong. Please try again.'}
+            </Text>
+            <TouchableOpacity style={styles.retryButton} onPress={() => refetch()}>
+              <Text style={styles.retryButtonText}>Retry</Text>
+            </TouchableOpacity>
+          </View>
+        ) : pdfData.length > 0 ? (
+          pdfData.map((pdf) => (
+            <View key={pdf.id} style={styles.pdfCard}>
             {/* Header */}
             <View style={styles.pdfHeader}>
               <View style={styles.pdfHeaderLeft}>
@@ -193,14 +229,14 @@ export default function PDFsScreen() {
                 <View style={styles.pdfInfo}>
                   <Text style={styles.pdfTitle}>{pdf.title}</Text>
                   <View style={styles.pdfMeta}>
-                    <Text style={styles.pdfSize}>{pdf.size}</Text>
+                    <Text style={styles.pdfSize}>{formatFileSize(pdf.file_size)}</Text>
                     <Text style={styles.pdfSeparator}>•</Text>
-                    <Text style={styles.pdfPages}>{pdf.pages} {t.pdfs.pages}</Text>
-                    {pdf.isPremium && (
+                    <Text style={styles.pdfPages}>{pdf.original_filename}</Text>
+                    {pdf.access_level === 'premium' && (
                       <>
                         <Text style={styles.pdfSeparator}>•</Text>
                         <View style={styles.premiumBadge}>
-                          <Text style={styles.premiumText}>{t.pdfs.premium}</Text>
+                          <Text style={styles.premiumText}>{t.pdfs?.premium || 'Premium'}</Text>
                         </View>
                       </>
                     )}
@@ -210,7 +246,7 @@ export default function PDFsScreen() {
               
               <View style={styles.ratingContainer}>
                 <Star size={14} color={Colors.warning} fill={Colors.warning} />
-                <Text style={styles.rating}>{pdf.rating}</Text>
+                <Text style={styles.rating}>4.5</Text>
               </View>
             </View>
 
@@ -219,7 +255,7 @@ export default function PDFsScreen() {
 
             {/* Tags */}
             <View style={styles.tagsContainer}>
-              {pdf.tags.map((tag, index) => (
+              {pdf.tags && pdf.tags.map((tag, index) => (
                 <View key={index} style={styles.tagChip}>
                   <Text style={styles.tagText}>{tag}</Text>
                 </View>
@@ -229,12 +265,12 @@ export default function PDFsScreen() {
             {/* Stats */}
             <View style={styles.statsContainer}>
               <View style={styles.statItem}>
-                <Download size={14} color="#6B7280" />
-                <Text style={styles.statText}>{pdf.downloads} {t.pdfs.downloads}</Text>
+                <Download size={14} color={Colors.textSubtle} />
+                <Text style={styles.statText}>{pdf.download_count} {t.pdfs?.downloads || 'downloads'}</Text>
               </View>
               <View style={styles.statItem}>
-                <Calendar size={14} color="#6B7280" />
-                <Text style={styles.statText}>{formatDate(pdf.uploadDate)}</Text>
+                <Calendar size={14} color={Colors.textSubtle} />
+                <Text style={styles.statText}>{formatDate(pdf.created_at)}</Text>
               </View>
             </View>
 
@@ -245,32 +281,30 @@ export default function PDFsScreen() {
                 onPress={() => handlePreview(pdf.id)}
               >
                 <Eye size={16} color={Colors.blue500} />
-                <Text style={styles.previewButtonText}>{t.pdfs.preview}</Text>
+                <Text style={styles.previewButtonText}>{t.pdfs?.preview || 'Preview'}</Text>
               </TouchableOpacity>
               
               <TouchableOpacity 
                 style={[
                   styles.downloadButton,
-                  pdf.isPremium && styles.premiumDownloadButton
+                  pdf.access_level === 'premium' && styles.premiumDownloadButton
                 ]}
                 onPress={() => handleDownload(pdf.id)}
               >
                 <Download size={16} color={Colors.white} />
                 <Text style={styles.downloadButtonText}>
-                  {pdf.isPremium ? t.pdfs.premiumDownload : t.pdfs.download}
+                  {pdf.access_level === 'premium' ? (t.pdfs?.premiumDownload || 'Premium Download') : (t.pdfs?.download || 'Download')}
                 </Text>
               </TouchableOpacity>
             </View>
-          </View>
-        ))}
-
-        {/* Empty State */}
-        {filteredPDFs.length === 0 && (
+            </View>
+          ))
+        ) : (
           <View style={styles.emptyState}>
             <FileText size={48} color={Colors.gray400} />
-            <Text style={styles.emptyTitle}>{t.pdfs.noPDFsFound}</Text>
+            <Text style={styles.emptyTitle}>{t.pdfs?.noPDFsFound || 'No PDFs found'}</Text>
             <Text style={styles.emptyDescription}>
-              {t.pdfs.tryAdjusting}
+              {t.pdfs?.tryAdjusting || 'Try adjusting your search or filters'}
             </Text>
           </View>
         )}
@@ -525,5 +559,33 @@ const getStyles = (Colors: any) => StyleSheet.create({
     fontSize: 14,
     color: Colors.textSubtle,
     textAlign: 'center',
+  },
+  errorState: {
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  errorTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: Colors.danger,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  errorDescription: {
+    fontSize: 14,
+    color: Colors.textSubtle,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  retryButton: {
+    backgroundColor: Colors.primaryLight,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: Colors.white,
+    fontSize: 14,
+    fontWeight: '500',
   },
 });

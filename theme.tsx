@@ -25,6 +25,8 @@ export interface ThemeColors {
   shadow: string;
   premiumBadge: string;
   premiumText: string;
+  skeletonBase: string;
+  skeletonHighlight: string;
 }
 
 export const LightTheme: ThemeColors = {
@@ -53,6 +55,8 @@ export const LightTheme: ThemeColors = {
   shadow: '#000',
   premiumBadge: '#FEF3C7',
   premiumText: '#D97706',
+  skeletonBase: '#E5E7EB',
+  skeletonHighlight: '#F3F4F6',
 };
 
 export const DarkTheme: ThemeColors = {
@@ -81,6 +85,8 @@ export const DarkTheme: ThemeColors = {
   shadow: '#000',
   premiumBadge: '#451A03',
   premiumText: '#FBBF24',
+  skeletonBase: '#374151',
+  skeletonHighlight: '#4B5563',
 };
 
 // Default export for backward compatibility

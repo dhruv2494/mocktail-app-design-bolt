@@ -46,7 +46,8 @@ export default function ForgotPasswordScreen() {
 
       dispatch(setPendingVerification({ 
         email: email.trim().toLowerCase(), 
-        isOTPSent: true 
+        isOTPSent: true,
+        type: 'forgot-password'
       }));
       setSent(true);
 

@@ -76,7 +76,8 @@ export default function SignupScreen() {
       dispatch(setCredentials({ token: result.token }));
       dispatch(setPendingVerification({ 
         email: email.trim().toLowerCase(), 
-        isOTPSent: true 
+        isOTPSent: true,
+        type: 'registration'
       }));
 
       Toast.show({

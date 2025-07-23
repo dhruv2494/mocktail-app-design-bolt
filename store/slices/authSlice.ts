@@ -7,6 +7,8 @@ export interface User {
   username: string;
   phone?: string;
   profileImage?: string;
+  isEmailVerified?: boolean;
+  created_at?: string;
 }
 
 export interface AuthState {
@@ -18,6 +20,7 @@ export interface AuthState {
   pendingVerification: {
     email: string | null;
     isOTPSent: boolean;
+    type: 'registration' | 'forgot-password' | null;
   };
 }
 
@@ -30,6 +33,7 @@ const initialState: AuthState = {
   pendingVerification: {
     email: null,
     isOTPSent: false,
+    type: null,
   },
 };
 
@@ -57,7 +61,7 @@ const authSlice = createSlice({
     },
     setPendingVerification: (
       state,
-      action: PayloadAction<{ email: string; isOTPSent: boolean }>
+      action: PayloadAction<{ email: string; isOTPSent: boolean; type: 'registration' | 'forgot-password' }>
     ) => {
       state.pendingVerification = action.payload;
     },
@@ -65,6 +69,7 @@ const authSlice = createSlice({
       state.pendingVerification = {
         email: null,
         isOTPSent: false,
+        type: null,
       };
     },
     logout: (state) => {
@@ -75,6 +80,7 @@ const authSlice = createSlice({
       state.pendingVerification = {
         email: null,
         isOTPSent: false,
+        type: null,
       };
       AsyncStorage.removeItem('token');
     },
