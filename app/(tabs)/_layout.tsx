@@ -2,7 +2,7 @@ import { getTheme } from '@/theme';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Tabs } from 'expo-router';
-import { Chrome as Home, BookOpen, User, FileText, Play } from 'lucide-react-native';
+import { Chrome as Home, BookOpen, User, FileText, Play, Bell } from 'lucide-react-native';
 import { AuthGuard } from '@/components/AuthGuard';
 
 export default function TabLayout() {
@@ -59,6 +59,15 @@ export default function TabLayout() {
             title: t.navigation.pdfs,
             tabBarIcon: ({ size, color }) => (
               <FileText size={size} color={color} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="notifications"
+          options={{
+            title: t.navigation.notifications,
+            tabBarIcon: ({ size, color }) => (
+              <Bell size={size} color={color} />
             ),
           }}
         />

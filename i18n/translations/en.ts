@@ -26,6 +26,10 @@ export const en = {
     goToHome: 'Go to home screen!',
     question: 'Question',
     of: 'of',
+    retry: 'Retry',
+    justNow: 'Just now',
+    hoursAgo: '{count} hours ago',
+    errorOccurred: 'An error occurred',
   },
 
   // Authentication
@@ -393,7 +397,19 @@ export const en = {
     freeTests: 'Free Tests',
     testSeries: 'Test Series',
     pdfs: 'PDFs',
+    notifications: 'Notifications',
     profile: 'Profile',
+  },
+
+  // Notifications
+  notifications: {
+    title: 'Notifications',
+    noNotifications: 'No Notifications',
+    notificationsWillAppearHere: 'Notifications will appear here when you receive them.',
+    markedAsRead: 'Notification marked as read',
+    markReadError: 'Failed to mark notification as read',
+    failedToLoadNotifications: 'Failed to load notifications. Please try again.',
+    totalNotifications: '{count} notifications',
   },
 
   // Languages

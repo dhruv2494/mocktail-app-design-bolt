@@ -1,99 +1,115 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Clock, Flag, ChevronLeft, ChevronRight, Grid3x3 as Grid3X3, Pause, Play, Globe, BookOpen } from 'lucide-react-native';
-import { router } from 'expo-router';
+import { Clock, Flag, ChevronLeft, ChevronRight, Grid3x3 as Grid3X3, Pause, Play, Globe, BookOpen, AlertCircle } from 'lucide-react-native';
+import { router, useLocalSearchParams } from 'expo-router';
 import { getTheme } from '@/theme';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { LanguageSelector } from '@/components/shared';
-
-interface Question {
-  id: number;
-  question: string;
-  options: string[];
-  correctAnswer: number;
-  explanation: string;
-  subject: string;
-  difficulty: 'Easy' | 'Medium' | 'Hard';
-  timeLimit?: number;
-}
+import { 
+  useStartQuizMutation,
+  useGetSessionStatusQuery,
+  useSaveAnswerMutation,
+  usePauseResumeQuizMutation,
+  useSubmitQuizMutation,
+  useValidateQuizSessionQuery,
+  QuizQuestion,
+  QuizSession
+} from '@/store/api/quizApi';
 
 export default function QuizScreen() {
+  const params = useLocalSearchParams();
+  const { testId, seriesId, testType, title } = params;
+  
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [selectedLanguage, setSelectedLanguage] = useState('English');
   const [isPaused, setIsPaused] = useState(false);
-  const [canPause, setCanPause] = useState(true); // Some tests allow pause, others don't
+  const [showGrid, setShowGrid] = useState(false);
+  const [questions, setQuestions] = useState<QuizQuestion[]>([]);
+  const [session, setSession] = useState<QuizSession | null>(null);
+  const [selectedAnswers, setSelectedAnswers] = useState<{ [key: string]: 'A' | 'B' | 'C' | 'D' }>({});
+  const [flaggedQuestions, setFlaggedQuestions] = useState<Set<string>>(new Set());
+  const [timeRemaining, setTimeRemaining] = useState(0);
+  const [testInfo, setTestInfo] = useState<any>(null);
+  
   const { isDarkMode } = useTheme();
   const Colors = getTheme(isDarkMode);
   const { t } = useLanguage();
-  const [selectedAnswers, setSelectedAnswers] = useState<{ [key: number]: number }>({});
-  const [flaggedQuestions, setFlaggedQuestions] = useState<Set<number>>(new Set());
-  const [timeRemaining, setTimeRemaining] = useState(3600); // 60 minutes
-  const [showGrid, setShowGrid] = useState(false);
   
+  // API hooks
+  const [startQuiz, { isLoading: startingQuiz }] = useStartQuizMutation();
+  const [saveAnswer] = useSaveAnswerMutation();
+  const [pauseResumeQuiz] = usePauseResumeQuizMutation();
+  const [submitQuiz, { isLoading: submittingQuiz }] = useSubmitQuizMutation();
+  
+  // Validate quiz session on component mount
+  const { data: validationData, isLoading: validatingSession } = useValidateQuizSessionQuery({
+    test_id: testId as string,
+    test_type: testType as string,
+    series_id: seriesId as string,
+  }, {
+    skip: !testId || !testType,
+  });
+
   const availableLanguages = ['English', 'Hindi', 'Kannada', 'Telugu'];
-  
-  const testInfo = {
-    title: 'PSI Mock Test 1',
-    canPause: true, // Some tests like final exams don't allow pause
-    isOneTime: false, // One-time completion tests
-    multiLanguage: true
-  };
 
-  const questions: Question[] = [
-    {
-      id: 1,
-      question: "What is the capital of India?",
-      options: ["Mumbai", "New Delhi", "Kolkata", "Chennai"],
-      correctAnswer: 1,
-      explanation: "New Delhi is the capital of India and serves as the seat of the Government of India.",
-      subject: "General Knowledge",
-      difficulty: "Easy"
-    },
-    {
-      id: 2,
-      question: "Which of the following is the largest planet in our solar system?",
-      options: ["Earth", "Mars", "Jupiter", "Saturn"],
-      correctAnswer: 2,
-      explanation: "Jupiter is the largest planet in our solar system, with a mass greater than all other planets combined.",
-      subject: "Science",
-      difficulty: "Medium"
-    },
-    {
-      id: 3,
-      question: "What is 15% of 200?",
-      options: ["25", "30", "35", "40"],
-      correctAnswer: 1,
-      explanation: "15% of 200 = (15/100) × 200 = 30",
-      subject: "Mathematics",
-      difficulty: "Easy"
-    },
-    {
-      id: 4,
-      question: "Who wrote the book 'Pride and Prejudice'?",
-      options: ["Charlotte Brontë", "Jane Austen", "Emily Dickinson", "Virginia Woolf"],
-      correctAnswer: 1,
-      explanation: "Pride and Prejudice was written by Jane Austen and published in 1813.",
-      subject: "English Literature",
-      difficulty: "Medium"
-    },
-    {
-      id: 5,
-      question: "Which gas is most abundant in Earth's atmosphere?",
-      options: ["Oxygen", "Carbon Dioxide", "Nitrogen", "Hydrogen"],
-      correctAnswer: 2,
-      explanation: "Nitrogen makes up about 78% of Earth's atmosphere, making it the most abundant gas.",
-      subject: "Science",
-      difficulty: "Medium"
-    }
-  ];
-
-  const languages = ['English', 'Hindi', 'Marathi', 'Gujarati'];
-
+  // Initialize quiz when validation is complete
   useEffect(() => {
-    if (!isPaused && timeRemaining > 0) {
+    const initializeQuiz = async () => {
+      if (!validationData?.data || !testId || !testType) return;
+      
+      const validation = validationData.data;
+      
+      // Check if user can start the quiz
+      if (!validation.can_start) {
+        Alert.alert(
+          'Cannot Start Quiz',
+          validation.reason || 'You cannot start this quiz at the moment.',
+          [{ text: 'OK', onPress: () => router.back() }]
+        );
+        return;
+      }
+
+      // Check if there's an existing session to resume
+      if (validation.existing_session) {
+        // Resume existing session
+        setSession(validation.existing_session as any);
+        setTimeRemaining(validation.existing_session.time_remaining);
+        // TODO: Load existing session data
+        return;
+      }
+
+      // Start new quiz session
+      try {
+        const result = await startQuiz({
+          test_id: testId as string,
+          test_type: testType as string,
+          series_id: seriesId as string,
+          language: selectedLanguage,
+        }).unwrap();
+
+        setSession(result.data.session);
+        setQuestions(result.data.questions);
+        setTestInfo(result.data.test_info);
+        setTimeRemaining(result.data.session.duration * 60); // Convert minutes to seconds
+      } catch (error) {
+        console.error('Error starting quiz:', error);
+        Alert.alert(
+          'Error',
+          'Failed to start the quiz. Please try again.',
+          [{ text: 'OK', onPress: () => router.back() }]
+        );
+      }
+    };
+
+    initializeQuiz();
+  }, [validationData, testId, testType, seriesId, selectedLanguage]);
+
+  // Timer effect
+  useEffect(() => {
+    if (!isPaused && timeRemaining > 0 && session) {
       const timer = setInterval(() => {
         setTimeRemaining(prev => {
           if (prev <= 1) {
@@ -106,7 +122,7 @@ export default function QuizScreen() {
 
       return () => clearInterval(timer);
     }
-  }, [isPaused, timeRemaining]);
+  }, [isPaused, timeRemaining, session]);
 
   const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
@@ -115,37 +131,141 @@ export default function QuizScreen() {
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const handleAnswerSelect = (answerIndex: number) => {
+  const handleAnswerSelect = async (option: 'A' | 'B' | 'C' | 'D') => {
+    if (!session || !questions[currentQuestion]) return;
+    
+    const questionId = questions[currentQuestion].id;
+    const previousAnswer = selectedAnswers[questionId];
+    
+    // Update local state immediately for better UX
     setSelectedAnswers(prev => ({
       ...prev,
-      [currentQuestion]: answerIndex
+      [questionId]: option
     }));
+
+    // Save to backend (auto-save)
+    try {
+      await saveAnswer({
+        session_id: session.id,
+        question_id: questionId,
+        selected_option: option,
+        time_spent: 0, // TODO: Track actual time spent on question
+        is_flagged: flaggedQuestions.has(questionId),
+        is_auto_save: true,
+      });
+    } catch (error) {
+      console.error('Error saving answer:', error);
+      // Could implement offline queue here
+    }
   };
 
-  const handleFlagQuestion = () => {
+  const handleFlagQuestion = async () => {
+    if (!session || !questions[currentQuestion]) return;
+    
+    const questionId = questions[currentQuestion].id;
+    const isFlagged = flaggedQuestions.has(questionId);
+    
+    // Update local state
     setFlaggedQuestions(prev => {
       const newSet = new Set(prev);
-      if (newSet.has(currentQuestion)) {
-        newSet.delete(currentQuestion);
+      if (isFlagged) {
+        newSet.delete(questionId);
       } else {
-        newSet.add(currentQuestion);
+        newSet.add(questionId);
       }
       return newSet;
     });
+
+    // Save flag status to backend
+    try {
+      await saveAnswer({
+        session_id: session.id,
+        question_id: questionId,
+        selected_option: selectedAnswers[questionId] || null,
+        time_spent: 0,
+        is_flagged: !isFlagged,
+        is_auto_save: true,
+      });
+    } catch (error) {
+      console.error('Error saving flag status:', error);
+    }
   };
 
-  const handlePauseResume = () => {
-    setIsPaused(!isPaused);
+  const handlePauseResume = async () => {
+    if (!session || !session.can_pause) return;
+    
+    try {
+      const result = await pauseResumeQuiz({
+        session_id: session.id,
+        action: isPaused ? 'resume' : 'pause',
+        timestamp: new Date().toISOString(),
+      }).unwrap();
+      
+      setIsPaused(result.data.status === 'paused');
+      setTimeRemaining(result.data.time_remaining);
+    } catch (error) {
+      console.error('Error toggling pause/resume:', error);
+      Alert.alert('Error', 'Failed to pause/resume the quiz.');
+    }
   };
 
-  const handleSubmitTest = () => {
-    router.push('/test/results');
+  const handleSubmitTest = async () => {
+    if (!session) return;
+
+    Alert.alert(
+      'Submit Quiz',
+      'Are you sure you want to submit your quiz? This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Submit', 
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              // Prepare answers in the required format
+              const answers = questions.map(question => ({
+                question_id: question.id,
+                selected_option: selectedAnswers[question.id] || null,
+                time_spent: 0, // TODO: Track actual time per question
+                is_flagged: flaggedQuestions.has(question.id),
+              }));
+
+              const result = await submitQuiz({
+                session_id: session.id,
+                answers,
+                submitted_at: new Date().toISOString(),
+                time_taken: (session.duration * 60) - timeRemaining,
+                is_manual_submit: true,
+              }).unwrap();
+
+              // Navigate to results with the result data
+              router.push({
+                pathname: '/test/results',
+                params: {
+                  resultId: result.data.result_id,
+                  sessionId: session.id,
+                  score: result.data.total_score.toString(),
+                  percentage: result.data.percentage.toString(),
+                  passed: result.data.passed.toString(),
+                },
+              });
+            } catch (error) {
+              console.error('Error submitting quiz:', error);
+              Alert.alert('Error', 'Failed to submit the quiz. Please try again.');
+            }
+          }
+        }
+      ]
+    );
   };
 
-  const getQuestionStatus = (index: number) => {
-    if (selectedAnswers[index] !== undefined) return 'answered';
-    if (flaggedQuestions.has(index)) return 'flagged';
-    if (index === currentQuestion) return 'current';
+  const getQuestionStatus = (questionIndex: number) => {
+    if (!questions[questionIndex]) return 'unanswered';
+    
+    const questionId = questions[questionIndex].id;
+    if (selectedAnswers[questionId] !== undefined) return 'answered';
+    if (flaggedQuestions.has(questionId)) return 'flagged';
+    if (questionIndex === currentQuestion) return 'current';
     return 'unanswered';
   };
 
@@ -157,6 +277,37 @@ export default function QuizScreen() {
       default: return Colors.muted;
     }
   };
+
+  const renderLoadingState = () => (
+    <SafeAreaView style={styles.container}>
+      <View style={[styles.centerContainer]}>
+        <ActivityIndicator size="large" color={Colors.primary} />
+        <Text style={[styles.loadingText, { color: Colors.textPrimary }]}>
+          {startingQuiz ? 'Starting Quiz...' : validatingSession ? 'Validating Session...' : 'Loading...'}
+        </Text>
+      </View>
+    </SafeAreaView>
+  );
+
+  const renderErrorState = (message: string) => (
+    <SafeAreaView style={styles.container}>
+      <View style={[styles.centerContainer]}>
+        <AlertCircle size={48} color={Colors.danger} />
+        <Text style={[styles.errorTitle, { color: Colors.textPrimary }]}>
+          Error
+        </Text>
+        <Text style={[styles.errorMessage, { color: Colors.textSubtle }]}>
+          {message}
+        </Text>
+        <TouchableOpacity
+          style={[styles.retryButton, { backgroundColor: Colors.primary }]}
+          onPress={() => router.back()}
+        >
+          <Text style={styles.retryButtonText}>Go Back</Text>
+        </TouchableOpacity>
+      </View>
+    </SafeAreaView>
+  );
 
   const renderQuestionGrid = () => (
     <View style={styles.gridContainer}>
@@ -211,6 +362,20 @@ export default function QuizScreen() {
     </View>
   );
 
+  // Show loading state while validating or starting quiz
+  if (validatingSession || startingQuiz || !session || questions.length === 0) {
+    return renderLoadingState();
+  }
+
+  // Show error state if there's no session or questions after loading
+  if (!session && !validatingSession && !startingQuiz) {
+    return renderErrorState('Failed to start the quiz session.');
+  }
+
+  if (questions.length === 0 && session) {
+    return renderErrorState('No questions available for this quiz.');
+  }
+
   if (showGrid) {
     return (
       <SafeAreaView style={styles.container}>
@@ -233,7 +398,7 @@ export default function QuizScreen() {
             <ChevronLeft size={24} color={Colors.textPrimary} />
           </TouchableOpacity>
           <View>
-            <Text style={styles.testTitle}>PSI Mock Test 1</Text>
+            <Text style={styles.testTitle}>{testInfo?.title || title || 'Quiz'}</Text>
             <Text style={styles.questionCounter}>
               Question {currentQuestion + 1} of {questions.length}
             </Text>
@@ -258,16 +423,18 @@ export default function QuizScreen() {
         </View>
         
         <View style={styles.controlButtons}>
-          <TouchableOpacity 
-            style={styles.controlButton}
-            onPress={handlePauseResume}
-          >
-            {isPaused ? (
-              <Play size={16} color={Colors.textSubtle} />
-            ) : (
-              <Pause size={16} color={Colors.textSubtle} />
-            )}
-          </TouchableOpacity>
+          {session?.can_pause && (
+            <TouchableOpacity 
+              style={styles.controlButton}
+              onPress={handlePauseResume}
+            >
+              {isPaused ? (
+                <Play size={16} color={Colors.textSubtle} />
+              ) : (
+                <Pause size={16} color={Colors.textSubtle} />
+              )}
+            </TouchableOpacity>
+          )}
           
           <TouchableOpacity 
             style={styles.controlButton}
@@ -279,14 +446,14 @@ export default function QuizScreen() {
           <TouchableOpacity 
             style={[
               styles.controlButton,
-              flaggedQuestions.has(currentQuestion) && styles.flaggedButton
+              questions[currentQuestion] && flaggedQuestions.has(questions[currentQuestion].id) && styles.flaggedButton
             ]}
             onPress={handleFlagQuestion}
           >
             <Flag 
               size={16} 
-              color={flaggedQuestions.has(currentQuestion) ? Colors.warning : Colors.textSubtle} 
-              fill={flaggedQuestions.has(currentQuestion) ? Colors.warning : 'none'}
+              color={questions[currentQuestion] && flaggedQuestions.has(questions[currentQuestion].id) ? Colors.warning : Colors.textSubtle} 
+              fill={questions[currentQuestion] && flaggedQuestions.has(questions[currentQuestion].id) ? Colors.warning : 'none'}
             />
           </TouchableOpacity>
         </View>
@@ -302,54 +469,57 @@ export default function QuizScreen() {
             </View>
             <View style={[
               styles.difficultyBadge,
-              { backgroundColor: questions[currentQuestion].difficulty === 'Easy' ? Colors.badgeSuccessBg : 
-                                 questions[currentQuestion].difficulty === 'Medium' ? Colors.premiumBadge : Colors.badgeDangerBg }
+              { backgroundColor: questions[currentQuestion].difficulty === 'easy' ? Colors.badgeSuccessBg : 
+                                 questions[currentQuestion].difficulty === 'medium' ? Colors.premiumBadge : Colors.badgeDangerBg }
             ]}>
               <Text style={[
                 styles.difficultyText,
-                { color: questions[currentQuestion].difficulty === 'Easy' ? Colors.success : 
-                         questions[currentQuestion].difficulty === 'Medium' ? Colors.premiumText : Colors.danger }
+                { color: questions[currentQuestion].difficulty === 'easy' ? Colors.success : 
+                         questions[currentQuestion].difficulty === 'medium' ? Colors.premiumText : Colors.danger }
               ]}>
-                {questions[currentQuestion].difficulty}
+                {questions[currentQuestion].difficulty.charAt(0).toUpperCase() + questions[currentQuestion].difficulty.slice(1)}
               </Text>
             </View>
           </View>
           
           <Text style={styles.questionText}>
-            {questions[currentQuestion].question}
+            {questions[currentQuestion].question_text}
           </Text>
         </View>
 
         {/* Options */}
         <View style={styles.optionsContainer}>
-          {questions[currentQuestion].options.map((option, index) => (
-            <TouchableOpacity
-              key={index}
-              style={[
-                styles.optionButton,
-                selectedAnswers[currentQuestion] === index && styles.selectedOption
-              ]}
-              onPress={() => handleAnswerSelect(index)}
-            >
-              <View style={[
-                styles.optionIndicator,
-                selectedAnswers[currentQuestion] === index && styles.selectedIndicator
-              ]}>
-                <Text style={[
-                  styles.optionLetter,
-                  selectedAnswers[currentQuestion] === index && styles.selectedOptionLetter
+          {Object.entries(questions[currentQuestion].options).map(([key, option]) => {
+            const isSelected = selectedAnswers[questions[currentQuestion].id] === key;
+            return (
+              <TouchableOpacity
+                key={key}
+                style={[
+                  styles.optionButton,
+                  isSelected && styles.selectedOption
+                ]}
+                onPress={() => handleAnswerSelect(key as 'A' | 'B' | 'C' | 'D')}
+              >
+                <View style={[
+                  styles.optionIndicator,
+                  isSelected && styles.selectedIndicator
                 ]}>
-                  {String.fromCharCode(65 + index)}
+                  <Text style={[
+                    styles.optionLetter,
+                    isSelected && styles.selectedOptionLetter
+                  ]}>
+                    {key}
+                  </Text>
+                </View>
+                <Text style={[
+                  styles.optionText,
+                  isSelected && styles.selectedOptionText
+                ]}>
+                  {option}
                 </Text>
-              </View>
-              <Text style={[
-                styles.optionText,
-                selectedAnswers[currentQuestion] === index && styles.selectedOptionText
-              ]}>
-                {option}
-              </Text>
-            </TouchableOpacity>
-          ))}
+              </TouchableOpacity>
+            );
+          })}
         </View>
       </ScrollView>
 
@@ -376,12 +546,17 @@ export default function QuizScreen() {
           <TouchableOpacity
             style={styles.submitButton}
             onPress={handleSubmitTest}
+            disabled={submittingQuiz}
           >
             <LinearGradient
               colors={[Colors.danger, Colors.danger]}
               style={styles.submitGradient}
             >
-              <Text style={styles.submitButtonText}>Submit Test</Text>
+              {submittingQuiz ? (
+                <ActivityIndicator size="small" color={Colors.white} />
+              ) : (
+                <Text style={styles.submitButtonText}>Submit Test</Text>
+              )}
             </LinearGradient>
           </TouchableOpacity>
         ) : (
@@ -687,5 +862,40 @@ const getStyles = (Colors: any) => StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: Colors.white,
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 40,
+  },
+  loadingText: {
+    fontSize: 16,
+    fontWeight: '500',
+    marginTop: 16,
+    textAlign: 'center',
+  },
+  errorTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginTop: 16,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  errorMessage: {
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 24,
+  },
+  retryButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: Colors.white,
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

@@ -9,6 +9,7 @@ import { store } from '@/store/store';
 import { useAuth } from '@/hooks/useAuth';
 import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
 import { LanguageProvider } from '@/contexts/LanguageContext';
+import { notificationService } from '@/services/NotificationService';
 
 function AppContent() {
   useFrameworkReady();
@@ -16,7 +17,24 @@ function AppContent() {
   const { isDarkMode } = useTheme();
 
   useEffect(() => {
-    initializeAuthState();
+    const initializeApp = async () => {
+      // Initialize authentication
+      await initializeAuthState();
+      
+      // Initialize notification service
+      try {
+        const initialized = await notificationService.initialize();
+        if (initialized) {
+          console.log('✅ Notification service initialized successfully');
+        } else {
+          console.warn('⚠️  Notification service initialization failed');
+        }
+      } catch (error) {
+        console.error('❌ Error initializing notification service:', error);
+      }
+    };
+
+    initializeApp();
   }, [initializeAuthState]);
 
   return (
