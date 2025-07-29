@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { router } from 'expo-router';
-import Toast from 'react-native-toast-message';
 import { useForgotPasswordMutation } from '@/store/api/authApi';
 import { useDispatch } from 'react-redux';
-import { setPendingVerification, setError } from '@/store/slices/authSlice';
+import { setPendingVerification } from '@/store/slices/authSlice';
 import { AuthLayout, FormInput, GradientButton, LinkText } from '@/components/shared';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useFormValidation } from '@/hooks/auth/useFormValidation';
+import { useAuthAPI } from '@/hooks/auth/useAuthAPI';
 
 export default function ForgotPasswordScreen() {
   const [email, setEmail] = useState('');
@@ -14,59 +15,34 @@ export default function ForgotPasswordScreen() {
   const dispatch = useDispatch();
   const [forgotPassword, { isLoading }] = useForgotPasswordMutation();
   const { t } = useLanguage();
+  const { executeAPI } = useAuthAPI();
 
-  const validateForm = () => {
-    if (!email.trim()) {
-      Toast.show({
-        type: 'error',
-        text1: t.common.error,
-        text2: t.auth.validation.emailRequired,
-      });
-      return false;
-    }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email.trim())) {
-      Toast.show({
-        type: 'error',
-        text1: t.common.error,
-        text2: t.auth.validation.invalidEmail,
-      });
-      return false;
-    }
-    return true;
-  };
+  const { validateForm } = useFormValidation({
+    email: { type: 'email', customMessage: t.auth.validation.invalidEmail },
+  });
 
   const handleReset = async () => {
-    if (!validateForm()) return;
+    const formData = { email };
+    if (!validateForm(formData)) return;
 
-    try {
-      await forgotPassword({
+    await executeAPI(
+      () => forgotPassword({
         email: email.trim().toLowerCase(),
-      }).unwrap();
-
-      dispatch(setPendingVerification({ 
-        email: email.trim().toLowerCase(), 
-        isOTPSent: true,
-        type: 'forgot-password'
-      }));
-      setSent(true);
-
-      Toast.show({
-        type: 'success',
-        text1: t.auth.resetEmailSent,
-        text2: t.auth.resetEmailSentMessage,
-      });
-
-      setTimeout(() => router.push('/(auth)/otp-verify'), 1000);
-    } catch (error: any) {
-      const errorMessage = error?.data?.message || t.auth.resetEmailFailed;
-      dispatch(setError(errorMessage));
-      Toast.show({
-        type: 'error',
-        text1: t.auth.resetEmailFailed,
-        text2: errorMessage,
-      });
-    }
+      }).unwrap(),
+      {
+        successMessage: t.auth.resetEmailSent,
+        errorMessage: t.auth.resetEmailFailed,
+        onSuccess: () => {
+          dispatch(setPendingVerification({ 
+            email: email.trim().toLowerCase(), 
+            isOTPSent: true,
+            type: 'forgot-password'
+          }));
+          setSent(true);
+          setTimeout(() => router.push('/(auth)/otp-verify'), 1000);
+        },
+      }
+    );
   };
 
   return (
@@ -99,5 +75,3 @@ export default function ForgotPasswordScreen() {
     </AuthLayout>
   );
 }
-
-

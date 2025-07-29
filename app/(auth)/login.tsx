@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
 import { StyleSheet } from 'react-native';
 import { router } from 'expo-router';
-import Toast from 'react-native-toast-message';
 import { useLoginMutation } from '@/store/api/authApi';
 import { useDispatch } from 'react-redux';
-import { setCredentials, setError } from '@/store/slices/authSlice';
+import { setCredentials } from '@/store/slices/authSlice';
 import { AuthLayout, FormInput, GradientButton, LinkText } from '@/components/shared';
 import { getTheme } from '@/theme';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useFormValidation } from '@/hooks/auth/useFormValidation';
+import { useAuthAPI } from '@/hooks/auth/useAuthAPI';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -19,54 +20,31 @@ export default function LoginScreen() {
   const { t } = useLanguage();
   const dispatch = useDispatch();
   const [login, { isLoading }] = useLoginMutation();
+  const { executeAPI } = useAuthAPI();
 
-  const validateForm = () => {
-    if (!email.trim()) {
-      Toast.show({
-        type: 'error',
-        text1: t.common.error,
-        text2: t.auth.validation.emailRequired,
-      });
-      return false;
-    }
-    if (!password.trim()) {
-      Toast.show({
-        type: 'error',
-        text1: t.common.error,
-        text2: t.auth.validation.passwordRequired,
-      });
-      return false;
-    }
-    return true;
-  };
+  const { validateForm } = useFormValidation({
+    email: { type: 'required', customMessage: t.auth.validation.emailRequired },
+    password: { type: 'required', customMessage: t.auth.validation.passwordRequired },
+  });
 
   const handleLogin = async () => {
-    if (!validateForm()) return;
+    const formData = { email, password };
+    if (!validateForm(formData)) return;
 
-    try {
-      const result = await login({
+    await executeAPI(
+      () => login({
         email: email.trim().toLowerCase(),
         password,
-      }).unwrap();
-
-      dispatch(setCredentials({ token: result.token }));
-
-      Toast.show({
-        type: 'success',
-        text1: t.auth.loginSuccess,
-        text2: t.auth.welcomeBack,
-      });
-
-      router.push('/');
-    } catch (error: any) {
-      const errorMessage = error?.data?.message || t.auth.loginFailed;
-      dispatch(setError(errorMessage));
-      Toast.show({
-        type: 'error',
-        text1: t.auth.loginFailed,
-        text2: errorMessage,
-      });
-    }
+      }).unwrap(),
+      {
+        successMessage: t.auth.loginSuccess,
+        errorMessage: t.auth.loginFailed,
+        onSuccess: (data) => {
+          dispatch(setCredentials({ token: data.token }));
+          router.push('/');
+        },
+      }
+    );
   };
 
   const styles = getStyles(Colors);

@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
 import { View, Text } from 'react-native';
 import { router } from 'expo-router';
-import Toast from 'react-native-toast-message';
 import { useVerifyOTPMutation } from '@/store/api/authApi';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '@/store/store';
-import { clearPendingVerification, setError } from '@/store/slices/authSlice';
+import { clearPendingVerification } from '@/store/slices/authSlice';
 import { AuthLayout, FormInput, GradientButton, LinkText } from '@/components/shared';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { API_CONFIG } from '@/config/constants';
+import { useFormValidation } from '@/hooks/auth/useFormValidation';
+import { useAuthAPI } from '@/hooks/auth/useAuthAPI';
+import { showSuccess, showError } from '@/utils/toast';
 
 export default function OtpVerifyScreen() {
   const [otp, setOtp] = useState('');
@@ -19,75 +21,55 @@ export default function OtpVerifyScreen() {
   const { pendingVerification } = useSelector((state: RootState) => state.auth);
   const [verifyOTP, { isLoading }] = useVerifyOTPMutation();
   const { t } = useLanguage();
+  const { executeAPI } = useAuthAPI();
+  
+  const { validateForm } = useFormValidation({
+    otp: { type: 'otp' },
+  });
 
-  const validateForm = () => {
-    if (!otp.trim()) {
-      Toast.show({
-        type: 'error',
-        text1: t.common.error,
-        text2: t.auth.validation.otpRequired,
-      });
-      return false;
-    }
-    if (otp.length !== 4) {
-      Toast.show({
-        type: 'error',
-        text1: t.common.error,
-        text2: t.auth.validation.otpLength,
-      });
-      return false;
-    }
-    if (!pendingVerification.email) {
-      Toast.show({
-        type: 'error',
-        text1: t.common.error,
-        text2: t.auth.validation.noPendingVerification,
-      });
-      return false;
-    }
-    return true;
-  };
 
   const handleVerify = async () => {
-    if (!validateForm()) return;
+    // Check for pending verification email first
+    if (!pendingVerification.email) {
+      showError(t.common.error, t.auth.validation.noPendingVerification);
+      return;
+    }
+    
+    const formData = { otp: otp.trim() };
+    if (!validateForm(formData)) return;
 
-    try {
-      await verifyOTP({
+    await executeAPI(
+      () => verifyOTP({
         email: pendingVerification.email!,
         otp: otp.trim(),
-      }).unwrap();
+      }).unwrap(),
+      {
+        errorMessage: t.auth.otpVerificationFailed,
+        onSuccess: () => {
+          // Store the type before clearing verification state
+          const verificationType = pendingVerification.type;
+          
+          setVerified(true);
 
-      // Store the type before clearing verification state
-      const verificationType = pendingVerification.type;
-      
-      setVerified(true);
+          showSuccess(
+            t.auth.otpVerifiedSuccess,
+            verificationType === 'forgot-password' 
+              ? 'OTP verified. You can now reset your password.' 
+              : t.auth.accountVerified
+          );
 
-      Toast.show({
-        type: 'success',
-        text1: t.auth.otpVerifiedSuccess,
-        text2: verificationType === 'forgot-password' 
-          ? 'OTP verified. You can now reset your password.' 
-          : t.auth.accountVerified,
-      });
-
-      // Redirect based on verification type
-      if (verificationType === 'forgot-password') {
-        // Don't clear verification for forgot password - update-password screen needs the email
-        setTimeout(() => router.push('/(auth)/update-password'), 1000);
-      } else {
-        // For registration, clear verification and redirect to dashboard
-        dispatch(clearPendingVerification());
-        setTimeout(() => router.push('/'), 1000);
+          // Redirect based on verification type
+          if (verificationType === 'forgot-password') {
+            // Don't clear verification for forgot password - update-password screen needs the email
+            setTimeout(() => router.push('/(auth)/update-password'), 1000);
+          } else {
+            // For registration, clear verification and redirect to dashboard
+            dispatch(clearPendingVerification());
+            setTimeout(() => router.push('/'), 1000);
+          }
+        }
       }
-    } catch (error: any) {
-      const errorMessage = error?.data?.message || t.auth.otpVerificationFailed;
-      dispatch(setError(errorMessage));
-      Toast.show({
-        type: 'error',
-        text1: t.auth.verificationFailed,
-        text2: errorMessage,
-      });
-    }
+    );
   };
 
   const handleResend = async () => {
@@ -95,42 +77,37 @@ export default function OtpVerifyScreen() {
     
     setResent(true);
     
-    try {
-      // Call appropriate resend API based on verification type
-      if (pendingVerification.type === 'forgot-password') {
-        // For forgot password, call forgot password API again
-        await fetch(`${API_CONFIG.BASE_URL}/api/users/forgotPassword`, {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'ngrok-skip-browser-warning': 'true'
-          },
-          body: JSON.stringify({ email: pendingVerification.email })
-        });
-      } else {
-        // For registration, call resend OTP API
-        await fetch(`${API_CONFIG.BASE_URL}/api/users/resend-otp`, {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'ngrok-skip-browser-warning': 'true'
-          },
-          body: JSON.stringify({ email: pendingVerification.email })
-        });
+    const apiCall = async () => {
+      const endpoint = pendingVerification.type === 'forgot-password'
+        ? '/api/users/forgotPassword'
+        : '/api/users/resend-otp';
+      
+      const response = await fetch(`${API_CONFIG.BASE_URL}${endpoint}`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'ngrok-skip-browser-warning': 'true'
+        },
+        body: JSON.stringify({ email: pendingVerification.email })
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to resend OTP');
       }
       
-      Toast.show({
-        type: 'success',
-        text1: t.auth.otpResent,
-        text2: t.auth.newOtpSent,
-      });
-    } catch (error) {
-      Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2: 'Failed to resend OTP. Please try again.',
-      });
-    }
+      return response.json();
+    };
+    
+    await executeAPI(
+      apiCall,
+      {
+        successMessage: t.auth.otpResent,
+        errorMessage: 'Failed to resend OTP. Please try again.',
+        onSuccess: () => {
+          showSuccess(t.auth.otpResent, t.auth.newOtpSent);
+        }
+      }
+    );
     
     setTimeout(() => setResent(false), 3000);
   };

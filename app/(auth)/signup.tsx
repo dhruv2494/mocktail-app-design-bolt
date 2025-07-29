@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { router } from 'expo-router';
-import Toast from 'react-native-toast-message';
 import { useRegisterMutation } from '@/store/api/authApi';
 import { useDispatch } from 'react-redux';
-import { setCredentials, setPendingVerification, setError } from '@/store/slices/authSlice';
+import { setCredentials, setPendingVerification } from '@/store/slices/authSlice';
 import { AuthLayout, FormInput, GradientButton, LinkText } from '@/components/shared';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useFormValidation } from '@/hooks/auth/useFormValidation';
+import { useAuthAPI } from '@/hooks/auth/useAuthAPI';
+import { showSuccess } from '@/utils/toast';
 
 export default function SignupScreen() {
   const [name, setName] = useState('');
@@ -17,85 +19,47 @@ export default function SignupScreen() {
   const dispatch = useDispatch();
   const [register, { isLoading }] = useRegisterMutation();
   const { t } = useLanguage();
+  const { executeAPI } = useAuthAPI();
+  
+  const { validateForm } = useFormValidation({
+    name: { type: 'required' },
+    email: { type: 'email' },
+    password: { type: 'password' },
+    confirmPassword: { type: 'confirmPassword', compareField: 'password' },
+  });
 
-  const validateForm = () => {
-    if (!name.trim()) {
-      Toast.show({
-        type: 'error',
-        text1: t.common.error,
-        text2: t.auth.validation.nameRequired,
-      });
-      return false;
-    }
-    if (!email.trim()) {
-      Toast.show({
-        type: 'error',
-        text1: t.common.error, 
-        text2: t.auth.validation.emailRequired,
-      });
-      return false;
-    }
-    if (!password.trim()) {
-      Toast.show({
-        type: 'error',
-        text1: t.common.error,
-        text2: t.auth.validation.passwordRequired,
-      });
-      return false;
-    }
-    if (password !== confirmPassword) {
-      Toast.show({
-        type: 'error',
-        text1: t.common.error,
-        text2: t.auth.validation.passwordMismatch,
-      });
-      return false;
-    }
-    if (password.length < 6) {
-      Toast.show({
-        type: 'error',
-        text1: t.common.error,
-        text2: t.auth.validation.passwordMinLength,
-      });
-      return false;
-    }
-    return true;
-  };
 
   const handleSignup = async () => {
-    if (!validateForm()) return;
+    const formData = {
+      name: name.trim(),
+      email: email.trim(),
+      password,
+      confirmPassword,
+    };
+    
+    if (!validateForm(formData)) return;
 
-    try {
-      const result = await register({
+    await executeAPI(
+      () => register({
         username: name.trim(),
         email: email.trim().toLowerCase(),
         password,
         phone: phone.trim() || undefined,
-      }).unwrap();
-
-      dispatch(setCredentials({ token: result.token }));
-      dispatch(setPendingVerification({ 
-        email: email.trim().toLowerCase(), 
-        isOTPSent: true,
-        type: 'registration'
-      }));
-
-      Toast.show({
-        type: 'success',
-        text1: t.auth.signupSuccess,
-        text2: t.auth.otpSentSuccess,
-      });
-
-      router.push('/(auth)/otp-verify');
-    } catch (error: any) {
-      const errorMessage = error?.data?.message || t.auth.signupFailed;
-      dispatch(setError(errorMessage));
-      Toast.show({
-        type: 'error',
-        text1: t.auth.signupFailed,
-        text2: errorMessage,
-      });
-    }
+      }).unwrap(),
+      {
+        errorMessage: t.auth.signupFailed,
+        onSuccess: (data) => {
+          dispatch(setCredentials({ token: data.token }));
+          dispatch(setPendingVerification({ 
+            email: email.trim().toLowerCase(), 
+            isOTPSent: true,
+            type: 'registration'
+          }));
+          showSuccess(t.auth.signupSuccess, t.auth.otpSentSuccess);
+          router.push('/(auth)/otp-verify');
+        }
+      }
+    );
   };
 
   return (

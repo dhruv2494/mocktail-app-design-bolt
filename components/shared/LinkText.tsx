@@ -1,5 +1,5 @@
 import React from 'react';
-import { TouchableOpacity, Text, StyleSheet, View } from 'react-native';
+import { TouchableOpacity, Text, StyleSheet, View, ViewStyle } from 'react-native';
 import { getTheme, ThemeColors } from '@/theme';
 import { useTheme } from '@/contexts/ThemeContext';
 
@@ -7,7 +7,7 @@ interface LinkTextProps {
   prefix?: string;
   linkText: string;
   onPress: () => void;
-  style?: any;
+  style?: ViewStyle;
   disabled?: boolean;
 }
 
