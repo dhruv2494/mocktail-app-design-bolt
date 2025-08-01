@@ -7,6 +7,7 @@ import { freeTestsApi } from './api/freeTestsApi';
 import { testSeriesApi } from './api/testSeriesApi';
 import { quizApi } from './api/quizApi';
 import { notificationsApi } from './api/notificationsApi';
+import { testApi } from './api/testApi';
 
 export const store = configureStore({
   reducer: {
@@ -17,6 +18,7 @@ export const store = configureStore({
     [testSeriesApi.reducerPath]: testSeriesApi.reducer,
     [quizApi.reducerPath]: quizApi.reducer,
     [notificationsApi.reducerPath]: notificationsApi.reducer,
+    [testApi.reducerPath]: testApi.reducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
@@ -29,7 +31,8 @@ export const store = configureStore({
       freeTestsApi.middleware,
       testSeriesApi.middleware,
       quizApi.middleware,
-      notificationsApi.middleware
+      notificationsApi.middleware,
+      testApi.middleware
     ),
 });
 

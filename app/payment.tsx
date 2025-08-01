@@ -8,32 +8,65 @@ import { getTheme } from '@/theme';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { AuthGuard } from '@/components/AuthGuard';
+import { useGetTestSeriesByIdQuery } from '@/store/api/testApi';
 
 export default function PaymentScreen() {
   const { isDarkMode } = useTheme();
-  const { t } = useLanguage();
+  const { t, currentLanguage } = useLanguage();
   const Colors = getTheme(isDarkMode);
-  const { seriesId } = useLocalSearchParams();
+  const { testSeriesId } = useLocalSearchParams();
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('razorpay');
 
-  // Sample series data - in real app, this would be fetched based on seriesId
-  const seriesData = {
+  const {
+    data: testSeriesData,
+    isLoading,
+    error,
+  } = useGetTestSeriesByIdQuery(testSeriesId as string);
+
+  const testSeries = testSeriesData?.data;
+
+  // If data is still loading or there's an error, use fallback data
+  const seriesData = testSeries ? {
+    id: testSeries.id,
+    title: currentLanguage === 'gu' && testSeries.title_gujarati 
+      ? testSeries.title_gujarati 
+      : testSeries.title,
+    price: testSeries.price || 299,
+    originalPrice: testSeries.price && testSeries.discount_percentage 
+      ? Math.round(testSeries.price / (1 - testSeries.discount_percentage / 100))
+      : testSeries.price || 499,
+    tests: testSeries.tests_count || 10,
+    freeTests: testSeries.demo_tests_count || 2,
+    duration: `${Math.round((testSeries.subscription_duration_days || 365) / 30)} months`,
+    description: currentLanguage === 'gu' && testSeries.description_gujarati 
+      ? testSeries.description_gujarati 
+      : testSeries.description || 'Complete test preparation with detailed solutions',
+    discount: testSeries.discount_percentage || 0,
+    features: [
+      `${testSeries.tests_count || 10} Full Length Tests`,
+      `${testSeries.demo_tests_count || 2} Free Demo Tests`,
+      'Detailed Solutions & Explanations',
+      'Performance Analytics',
+      'Multi-language Support (English + Gujarati)',
+      `${Math.round((testSeries.subscription_duration_days || 365) / 30)} months validity`
+    ]
+  } : {
     id: 1,
-    title: 'PSI Mock Test Series',
+    title: 'Test Series',
     price: 299,
     originalPrice: 499,
     tests: 10,
     freeTests: 2,
     duration: '3 months',
-    description: 'Complete preparation for Police Sub Inspector exam with detailed solutions',
+    description: 'Complete test preparation with detailed solutions',
     discount: Math.round((1 - 299 / 499) * 100),
     features: [
-      t.payment.features.fullLengthTests.replace('{count}', '10'),
-      t.payment.features.freeTests.replace('{count}', '2'),
-      t.payment.features.detailedSolutions,
-      t.payment.features.performanceAnalytics,
-      t.payment.features.multiLanguage,
-      t.payment.features.validity.replace('{duration}', '3')
+      '10 Full Length Tests',
+      '2 Free Demo Tests',
+      'Detailed Solutions & Explanations',
+      'Performance Analytics',
+      'Multi-language Support',
+      '3 months validity'
     ]
   };
 
@@ -41,21 +74,21 @@ export default function PaymentScreen() {
     {
       id: 'razorpay',
       name: 'Razorpay',
-      description: t.payment.razorpayDesc,
+      description: 'Credit/Debit Cards, UPI, Net Banking',
       icon: CreditCard,
       recommended: true
     },
     {
       id: 'upi',
-      name: t.payment.upi,
-      description: t.payment.upiDesc,
+      name: 'UPI Payment',
+      description: 'GPay, PhonePe, Paytm UPI',
       icon: Smartphone,
       recommended: false
     },
     {
       id: 'wallet',
-      name: t.payment.digitalWallet,
-      description: t.payment.walletDesc,
+      name: 'Digital Wallet',
+      description: 'Paytm, PhonePe, Amazon Pay',
       icon: Wallet,
       recommended: false
     }
@@ -64,17 +97,26 @@ export default function PaymentScreen() {
   const handlePayment = () => {
     // In real implementation, integrate with actual payment gateway
     Alert.alert(
-      t.payment.gatewayIntegration,
-      t.payment.integrationMessage.replace('{method}', selectedPaymentMethod).replace('{amount}', `₹${seriesData.price}`),
+      'Payment Gateway Integration',
+      `This will integrate with ${selectedPaymentMethod} to process payment of ₹${seriesData.price}. This is a demo implementation.`,
       [
-        { text: t.common.cancel, style: 'cancel' },
+        { text: 'Cancel', style: 'cancel' },
         { 
-          text: t.payment.simulateSuccess, 
+          text: 'Simulate Success', 
           onPress: () => {
             Alert.alert(
-              t.payment.paymentSuccess,
-              t.payment.seriesAdded,
-              [{ text: t.common.ok, onPress: () => router.back() }]
+              'Payment Successful!',
+              'Test series has been added to your account.',
+              [{ 
+                text: 'Start Learning', 
+                onPress: () => {
+                  if (testSeries) {
+                    router.replace(`/test-series/${testSeries.uuid}/categories`);
+                  } else {
+                    router.back();
+                  }
+                }
+              }]
             );
           }
         }
@@ -96,7 +138,7 @@ export default function PaymentScreen() {
           >
             <ChevronLeft size={24} color={Colors.textPrimary} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>{t.payment.purchaseTestSeries}</Text>
+          <Text style={styles.headerTitle}>Purchase Test Series</Text>
           <View style={styles.placeholder} />
         </View>
 
@@ -117,35 +159,35 @@ export default function PaymentScreen() {
 
         {/* Price Summary */}
         <View style={styles.priceCard}>
-          <Text style={styles.priceCardTitle}>{t.payment.priceDetails}</Text>
+          <Text style={styles.priceCardTitle}>Price Details</Text>
           
           <View style={styles.priceRow}>
-            <Text style={styles.priceLabel}>{t.payment.originalPrice}</Text>
+            <Text style={styles.priceLabel}>Original Price</Text>
             <Text style={styles.originalPrice}>₹{seriesData.originalPrice}</Text>
           </View>
           
           <View style={styles.priceRow}>
-            <Text style={styles.priceLabel}>{t.payment.discount} ({seriesData.discount}% {t.payment.off})</Text>
+            <Text style={styles.priceLabel}>Discount ({seriesData.discount}% OFF)</Text>
             <Text style={styles.discountAmount}>-₹{seriesData.originalPrice - seriesData.price}</Text>
           </View>
           
           <View style={styles.divider} />
           
           <View style={styles.priceRow}>
-            <Text style={styles.totalLabel}>{t.payment.totalAmount}</Text>
+            <Text style={styles.totalLabel}>Total Amount</Text>
             <Text style={styles.totalPrice}>₹{seriesData.price}</Text>
           </View>
 
           <View style={styles.savingsHighlight}>
             <Text style={styles.savingsText}>
-              {t.payment.youSave.replace('{amount}', `₹${seriesData.originalPrice - seriesData.price}`)}
+              You save ₹{seriesData.originalPrice - seriesData.price}
             </Text>
           </View>
         </View>
 
         {/* Payment Methods */}
         <View style={styles.paymentCard}>
-          <Text style={styles.paymentTitle}>{t.payment.selectPaymentMethod}</Text>
+          <Text style={styles.paymentTitle}>Select Payment Method</Text>
           
           {paymentMethods.map((method) => (
             <TouchableOpacity
@@ -171,7 +213,7 @@ export default function PaymentScreen() {
                     <Text style={styles.paymentMethodName}>{method.name}</Text>
                     {method.recommended && (
                       <View style={styles.recommendedBadge}>
-                        <Text style={styles.recommendedText}>{t.payment.recommended}</Text>
+                        <Text style={styles.recommendedText}>Recommended</Text>
                       </View>
                     )}
                   </View>
@@ -195,7 +237,7 @@ export default function PaymentScreen() {
         <View style={styles.securityNotice}>
           <Shield size={20} color={Colors.success} />
           <Text style={styles.securityText}>
-            {t.payment.securePayment}
+            100% Secure Payment - SSL Encrypted
           </Text>
         </View>
 
@@ -212,13 +254,13 @@ export default function PaymentScreen() {
               end={{ x: 1, y: 0 }}
             >
               <Text style={styles.paymentButtonText}>
-                {t.payment.payNow.replace('{amount}', `₹${seriesData.price}`)}
+                Pay Now ₹{seriesData.price}
               </Text>
             </LinearGradient>
           </TouchableOpacity>
           
           <Text style={styles.paymentNote}>
-            {t.payment.termsNote}
+            By proceeding, you agree to our Terms & Conditions and Privacy Policy
           </Text>
         </View>
         </ScrollView>

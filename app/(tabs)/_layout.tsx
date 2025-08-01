@@ -2,7 +2,7 @@ import { getTheme } from '@/theme';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Tabs } from 'expo-router';
-import { Chrome as Home, BookOpen, User, FileText, Play, Bell } from 'lucide-react-native';
+import { Chrome as Home, BookOpen, User, FileText, Play, Bell, Trophy } from 'lucide-react-native';
 import { AuthGuard } from '@/components/AuthGuard';
 
 export default function TabLayout() {
@@ -50,6 +50,15 @@ export default function TabLayout() {
             title: t.navigation.testSeries,
             tabBarIcon: ({ size, color }) => (
               <BookOpen size={size} color={color} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="leaderboard"
+          options={{
+            title: t.navigation.leaderboard,
+            tabBarIcon: ({ size, color }) => (
+              <Trophy size={size} color={color} />
             ),
           }}
         />
