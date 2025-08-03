@@ -1,6 +1,6 @@
 // API Configuration
 export const API_CONFIG = {
-  BASE_URL:  'https://9c09d6c6c6e2.ngrok-free.app',
+  BASE_URL:  'http://192.168.64.137:3000',
   ENDPOINTS: {
     AUTH: {
       REGISTER: '/api/users/register',

@@ -27,6 +27,9 @@ export interface ThemeColors {
   premiumText: string;
   skeletonBase: string;
   skeletonHighlight: string;
+  border: string;
+  error: string;
+  progress: string;
 }
 
 export const LightTheme: ThemeColors = {
@@ -57,6 +60,9 @@ export const LightTheme: ThemeColors = {
   premiumText: '#D97706',
   skeletonBase: '#E5E7EB',
   skeletonHighlight: '#F3F4F6',
+  border: '#E5E7EB',
+  error: '#DC2626',
+  progress: '#10B981',
 };
 
 export const DarkTheme: ThemeColors = {
@@ -87,6 +93,9 @@ export const DarkTheme: ThemeColors = {
   premiumText: '#FBBF24',
   skeletonBase: '#374151',
   skeletonHighlight: '#4B5563',
+  border: '#374151',
+  error: '#EF4444',
+  progress: '#10B981',
 };
 
 // Default export for backward compatibility

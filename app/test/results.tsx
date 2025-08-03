@@ -1,73 +1,64 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Trophy, Clock, Target, TrendingUp, ChevronRight, Award, Users, BookOpen, CircleCheck as CheckCircle, Circle as XCircle, CircleAlert as AlertCircle } from 'lucide-react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { getTheme } from '@/theme';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useReviewAnswersQuery } from '@/store/api/quizApi';
 
 const { width } = Dimensions.get('window');
 
-interface TestResult {
-  testId: string;
-  testTitle: string;
-  totalQuestions: number;
-  correctAnswers: number;
-  incorrectAnswers: number;
-  unanswered: number;
-  totalMarks: number;
-  obtainedMarks: number;
-  percentage: number;
-  timeTaken: number;
-  totalTime: number;
-  rank: number;
-  totalParticipants: number;
-  percentile: number;
-  subject: string;
-}
-
 export default function TestResultsScreen() {
+  const params = useLocalSearchParams();
+  const { resultId, sessionId, score, percentage, passed } = params;
+  
   const [activeTab, setActiveTab] = useState<'overview' | 'analysis'>('overview');
   const { isDarkMode } = useTheme();
   const { t } = useLanguage();
   const Colors = getTheme(isDarkMode);
 
-  const testResult: TestResult = {
-    testId: '1',
-    testTitle: 'PSI Mock Test 1',
-    totalQuestions: 100,
-    correctAnswers: 72,
-    incorrectAnswers: 18,
-    unanswered: 10,
-    totalMarks: 100,
-    obtainedMarks: 72,
-    percentage: 72,
-    timeTaken: 5400, // 90 minutes in seconds
-    totalTime: 7200, // 120 minutes in seconds
-    rank: 15,
-    totalParticipants: 1250,
-    percentile: 85.2,
-    subject: 'General Knowledge'
-  };
+  // Fetch detailed results from API
+  const { 
+    data: reviewData, 
+    isLoading: loadingResults,
+    error: resultsError 
+  } = useReviewAnswersQuery({
+    session_id: sessionId as string,
+    result_id: resultId as string,
+  }, {
+    skip: !sessionId || !resultId,
+  });
 
-  // Additional performance metrics as per documentation
-  const performanceMetrics = {
-    accuracy: (testResult.correctAnswers / (testResult.correctAnswers + testResult.incorrectAnswers)) * 100,
-    averageTimePerQuestion: testResult.timeTaken / testResult.totalQuestions,
-    categoryWisePerformance: [
-      { category: 'General Knowledge', attempted: 25, correct: 20, accuracy: 80 },
-      { category: 'Reasoning', attempted: 25, correct: 18, accuracy: 72 },
-      { category: 'Mathematics', attempted: 25, correct: 19, accuracy: 76 },
-      { category: 'English', attempted: 25, correct: 15, accuracy: 60 }
-    ],
-    comparisonWithPreviousTests: {
-      improvementPercent: 8.5,
-      consistencyRating: 'Good'
-    },
-    recommendedFocusAreas: ['English Grammar', 'Speed Calculation', 'Current Affairs']
-  };
+  const results = reviewData?.data;
+  const questions = results?.questions || [];
+  const resultSummary = results?.result_summary;
+
+  // Calculate metrics from API data
+  const correctAnswers = questions.filter(q => q.is_correct).length;
+  const incorrectAnswers = questions.filter(q => !q.is_correct && q.selected_option !== null).length;
+  const unanswered = questions.filter(q => q.selected_option === null).length;
+  const totalQuestions = questions.length;
+  const totalTimeTaken = questions.reduce((sum, q) => sum + q.time_spent, 0);
+  
+  // Group by subject for analysis
+  const subjectStats = questions.reduce((acc, question) => {
+    const subject = question.subject;
+    if (!acc[subject]) {
+      acc[subject] = { total: 0, correct: 0, attempted: 0, timeSpent: 0 };
+    }
+    acc[subject].total++;
+    acc[subject].timeSpent += question.time_spent;
+    if (question.selected_option !== null) {
+      acc[subject].attempted++;
+      if (question.is_correct) {
+        acc[subject].correct++;
+      }
+    }
+    return acc;
+  }, {} as Record<string, { total: number; correct: number; attempted: number; timeSpent: number }>);
 
   const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
@@ -91,16 +82,74 @@ export default function TestResultsScreen() {
   };
 
   const handleViewSolutions = () => {
-    router.push('/test/solutions');
+    router.push({
+      pathname: '/test/solutions',
+      params: {
+        sessionId,
+        resultId,
+      },
+    });
   };
 
   const handleViewLeaderboard = () => {
-    router.push('/test/leaderboard');
+    router.push({
+      pathname: '/test/leaderboard',
+      params: {
+        testId: params.testId,
+        testType: params.testType,
+      },
+    });
   };
 
   const handleRetakeTest = () => {
-    router.push('/test/quiz');
+    // Navigate back to the test with same parameters
+    router.push({
+      pathname: '/test/quiz',
+      params: {
+        testId: params.testId,
+        testType: params.testType,
+        seriesId: params.seriesId,
+        title: params.title,
+      },
+    });
   };
+
+  // Show loading state while fetching results
+  if (loadingResults) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+          <Text style={[styles.loadingText, { color: Colors.textPrimary }]}>
+            Loading Results...
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Show error state if results failed to load
+  if (resultsError || !results) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.errorContainer}>
+          <AlertCircle size={48} color={Colors.danger} />
+          <Text style={[styles.errorTitle, { color: Colors.textPrimary }]}>
+            Error Loading Results
+          </Text>
+          <Text style={[styles.errorMessage, { color: Colors.textSubtle }]}>
+            Failed to load test results. Please try again.
+          </Text>
+          <TouchableOpacity
+            style={[styles.retryButton, { backgroundColor: Colors.primary }]}
+            onPress={() => router.back()}
+          >
+            <Text style={styles.retryButtonText}>Go Back</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   const styles = getStyles(Colors);
 
@@ -113,11 +162,11 @@ export default function TestResultsScreen() {
       >
         <View style={styles.headerContent}>
           <Text style={styles.headerTitle}>{t.results.testCompleted}</Text>
-          <Text style={styles.headerSubtitle}>{testResult.testTitle}</Text>
+          <Text style={styles.headerSubtitle}>{params.title || 'Quiz'}</Text>
         </View>
         
         <View style={styles.scoreCircle}>
-          <Text style={styles.scorePercentage}>{testResult.percentage}%</Text>
+          <Text style={styles.scorePercentage}>{Math.round(Number(percentage) || 0)}%</Text>
           <Text style={styles.scoreLabel}>{t.results.score}</Text>
         </View>
       </LinearGradient>
@@ -129,7 +178,7 @@ export default function TestResultsScreen() {
           style={styles.performanceGradient}
         >
           <Award size={24} color={Colors.white} />
-          <Text style={styles.performanceText}>{getPerformanceText(testResult.percentage)}</Text>
+          <Text style={styles.performanceText}>{getPerformanceText(Number(percentage) || 0)}</Text>
         </LinearGradient>
       </View>
 
@@ -160,19 +209,19 @@ export default function TestResultsScreen() {
             <View style={styles.statsContainer}>
               <View style={styles.statCard}>
                 <CheckCircle size={24} color={Colors.success} />
-                <Text style={styles.statNumber}>{testResult.correctAnswers}</Text>
+                <Text style={styles.statNumber}>{correctAnswers}</Text>
                 <Text style={styles.statLabel}>{t.results.correct}</Text>
               </View>
               
               <View style={styles.statCard}>
                 <XCircle size={24} color={Colors.danger} />
-                <Text style={styles.statNumber}>{testResult.incorrectAnswers}</Text>
+                <Text style={styles.statNumber}>{incorrectAnswers}</Text>
                 <Text style={styles.statLabel}>{t.results.incorrect}</Text>
               </View>
               
               <View style={styles.statCard}>
                 <AlertCircle size={24} color={Colors.warning} />
-                <Text style={styles.statNumber}>{testResult.unanswered}</Text>
+                <Text style={styles.statNumber}>{unanswered}</Text>
                 <Text style={styles.statLabel}>{t.results.unanswered}</Text>
               </View>
             </View>
@@ -185,27 +234,28 @@ export default function TestResultsScreen() {
                     <CheckCircle size={20} color={Colors.primaryLight} />
                     <Text style={styles.detailLabel}>{t.results.correctAnswers}</Text>
                   </View>
-                  <Text style={styles.detailValue}>{testResult.correctAnswers}</Text>
+                  <Text style={styles.detailValue}>{correctAnswers}</Text>
                 </View>
                 <View style={styles.detailRow}>
                   <View style={styles.detailItem}>
                     <XCircle size={20} color={Colors.accent} />
                     <Text style={styles.detailLabel}>{t.results.incorrectAnswers}</Text>
                   </View>
-                  <Text style={styles.detailValue}>{testResult.incorrectAnswers}</Text>
+                  <Text style={styles.detailValue}>{incorrectAnswers}</Text>
                 </View>
                 <View style={styles.detailRow}>
                   <View style={styles.detailItem}>
                     <AlertCircle size={20} color={Colors.accent} />
                     <Text style={styles.detailLabel}>{t.results.unanswered}</Text>
                   </View>
-                  <Text style={styles.detailValue}>{testResult.unanswered}</Text>
+                  <Text style={styles.detailValue}>{unanswered}</Text>
                 </View>
-              </View>
-              <View style={styles.detailRow}>
-                <View style={styles.detailItem}>
-                  <Target size={20} color={Colors.primaryLight} />
-                  <Text style={styles.detailLabel}>{t.results.marks}</Text>
+                <View style={styles.detailRow}>
+                  <View style={styles.detailItem}>
+                    <Target size={20} color={Colors.primaryLight} />
+                    <Text style={styles.detailLabel}>{t.results.totalScore}</Text>
+                  </View>
+                  <Text style={styles.detailValue}>{resultSummary?.total_score || score}</Text>
                 </View>
               </View>
             </View>
@@ -219,7 +269,7 @@ export default function TestResultsScreen() {
                     style={[
                       styles.progressSegment, 
                       { 
-                        width: `${(testResult.correctAnswers / testResult.totalQuestions) * 100}%`,
+                        width: `${(correctAnswers / totalQuestions) * 100}%`,
                         backgroundColor: Colors.success
                       }
                     ]} 
@@ -228,7 +278,7 @@ export default function TestResultsScreen() {
                     style={[
                       styles.progressSegment, 
                       { 
-                        width: `${(testResult.incorrectAnswers / testResult.totalQuestions) * 100}%`,
+                        width: `${(incorrectAnswers / totalQuestions) * 100}%`,
                         backgroundColor: Colors.danger
                       }
                     ]} 
@@ -237,7 +287,7 @@ export default function TestResultsScreen() {
                     style={[
                       styles.progressSegment, 
                       { 
-                        width: `${(testResult.unanswered / testResult.totalQuestions) * 100}%`,
+                        width: `${(unanswered / totalQuestions) * 100}%`,
                         backgroundColor: Colors.warning
                       }
                     ]} 
@@ -247,15 +297,15 @@ export default function TestResultsScreen() {
                 <View style={styles.chartLegend}>
                   <View style={styles.legendItem}>
                     <View style={[styles.legendDot, { backgroundColor: Colors.success }]} />
-                    <Text style={styles.legendText}>{t.results.correct} ({testResult.correctAnswers})</Text>
+                    <Text style={styles.legendText}>{t.results.correct} ({correctAnswers})</Text>
                   </View>
                   <View style={styles.legendItem}>
                     <View style={[styles.legendDot, { backgroundColor: Colors.danger }]} />
-                    <Text style={styles.legendText}>{t.results.incorrect} ({testResult.incorrectAnswers})</Text>
+                    <Text style={styles.legendText}>{t.results.incorrect} ({incorrectAnswers})</Text>
                   </View>
                   <View style={styles.legendItem}>
                     <View style={[styles.legendDot, { backgroundColor: Colors.warning }]} />
-                    <Text style={styles.legendText}>{t.results.unanswered} ({testResult.unanswered})</Text>
+                    <Text style={styles.legendText}>{t.results.unanswered} ({unanswered})</Text>
                   </View>
                 </View>
               </View>
@@ -267,61 +317,24 @@ export default function TestResultsScreen() {
             <View style={styles.analysisContainer}>
               <Text style={styles.analysisTitle}>{t.results.subjectWisePerformance}</Text>
               
-              <View style={styles.subjectCard}>
-                <View style={styles.subjectHeader}>
-                  <BookOpen size={20} color={Colors.textLink} />
-                  <Text style={styles.subjectName}>{t.results.subjects.generalKnowledge}</Text>
-                </View>
-                <View style={styles.subjectStats}>
-                  <Text style={styles.subjectScore}>18/25</Text>
-                  <Text style={styles.subjectPercentage}>72%</Text>
-                </View>
-                <View style={styles.subjectProgress}>
-                  <View style={[styles.subjectProgressBar, { width: '72%' }]} />
-                </View>
-              </View>
-
-              <View style={styles.subjectCard}>
-                <View style={styles.subjectHeader}>
-                  <BookOpen size={20} color={Colors.textLink} />
-                  <Text style={styles.subjectName}>{t.results.subjects.mathematics}</Text>
-                </View>
-                <View style={styles.subjectStats}>
-                  <Text style={styles.subjectScore}>22/25</Text>
-                  <Text style={styles.subjectPercentage}>88%</Text>
-                </View>
-                <View style={styles.subjectProgress}>
-                  <View style={[styles.subjectProgressBar, { width: '88%' }]} />
-                </View>
-              </View>
-
-              <View style={styles.subjectCard}>
-                <View style={styles.subjectHeader}>
-                  <BookOpen size={20} color={Colors.textLink} />
-                  <Text style={styles.subjectName}>{t.results.subjects.reasoning}</Text>
-                </View>
-                <View style={styles.subjectStats}>
-                  <Text style={styles.subjectScore}>16/25</Text>
-                  <Text style={styles.subjectPercentage}>64%</Text>
-                </View>
-                <View style={styles.subjectProgress}>
-                  <View style={[styles.subjectProgressBar, { width: '64%' }]} />
-                </View>
-              </View>
-
-              <View style={styles.subjectCard}>
-                <View style={styles.subjectHeader}>
-                  <BookOpen size={20} color={Colors.textLink} />
-                  <Text style={styles.subjectName}>{t.results.subjects.english}</Text>
-                </View>
-                <View style={styles.subjectStats}>
-                  <Text style={styles.subjectScore}>16/25</Text>
-                  <Text style={styles.subjectPercentage}>64%</Text>
-                </View>
-                <View style={styles.subjectProgress}>
-                  <View style={[styles.subjectProgressBar, { width: '64%' }]} />
-                </View>
-              </View>
+              {Object.entries(subjectStats).map(([subject, stats]) => {
+                const accuracy = stats.attempted > 0 ? (stats.correct / stats.attempted) * 100 : 0;
+                return (
+                  <View key={subject} style={styles.subjectCard}>
+                    <View style={styles.subjectHeader}>
+                      <BookOpen size={20} color={Colors.textLink} />
+                      <Text style={styles.subjectName}>{subject}</Text>
+                    </View>
+                    <View style={styles.subjectStats}>
+                      <Text style={styles.subjectScore}>{stats.correct}/{stats.total}</Text>
+                      <Text style={styles.subjectPercentage}>{Math.round(accuracy)}%</Text>
+                    </View>
+                    <View style={styles.subjectProgress}>
+                      <View style={[styles.subjectProgressBar, { width: `${accuracy}%` }]} />
+                    </View>
+                  </View>
+                );
+              })}
             </View>
 
             {/* Time Analysis */}
@@ -329,11 +342,11 @@ export default function TestResultsScreen() {
               <Text style={styles.analysisTitle}>{t.results.timeAnalysis}</Text>
               <View style={styles.timeCard}>
                 <Text style={styles.timeLabel}>{t.results.avgTimePerQuestion}</Text>
-                <Text style={styles.timeValue}>{Math.round(testResult.timeTaken / testResult.totalQuestions)}s</Text>
+                <Text style={styles.timeValue}>{totalQuestions > 0 ? Math.round(totalTimeTaken / totalQuestions) : 0}s</Text>
               </View>
               <View style={styles.timeCard}>
-                <Text style={styles.timeLabel}>{t.results.timeSaved}</Text>
-                <Text style={styles.timeValue}>{formatTime(testResult.totalTime - testResult.timeTaken)}</Text>
+                <Text style={styles.timeLabel}>{t.results.totalTimeSpent}</Text>
+                <Text style={styles.timeValue}>{formatTime(totalTimeTaken)}</Text>
               </View>
             </View>
           </>
@@ -693,5 +706,41 @@ const getStyles = (Colors: any) => StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: Colors.white,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 40,
+  },
+  loadingText: {
+    fontSize: 16,
+    fontWeight: '500',
+    marginTop: 16,
+    textAlign: 'center',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 40,
+  },
+  errorTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginTop: 16,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  errorMessage: {
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 24,
+  },
+  retryButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
   },
 });

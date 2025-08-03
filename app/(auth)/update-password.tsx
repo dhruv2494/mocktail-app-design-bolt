@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getTheme } from '@/theme';
 import { useTheme } from '@/contexts/ThemeContext';
-import logo from '@/assets/images/MockTale.jpg';
+const logo = require('@/assets/images/MockTale.jpg');
 import { router } from 'expo-router';
 import Toast from 'react-native-toast-message';
 import { useResetPasswordMutation } from '@/store/api/authApi';

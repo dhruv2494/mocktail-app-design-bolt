@@ -82,7 +82,7 @@ export default function HomeScreen() {
               <TouchableOpacity
                 key={action.id}
                 style={styles.quickActionCard}
-                onPress={() => router.push(action.route)}
+                onPress={() => router.push(action.route as any)}
               >
                 <View style={[styles.quickActionIcon, { backgroundColor: `${action.color}20` }]}>
                   <action.icon size={24} color={action.color} />

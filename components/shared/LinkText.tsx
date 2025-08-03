@@ -8,6 +8,7 @@ interface LinkTextProps {
   linkText: string;
   onPress: () => void;
   style?: any;
+  disabled?: boolean;
 }
 
 export const LinkText: React.FC<LinkTextProps> = ({
@@ -15,6 +16,7 @@ export const LinkText: React.FC<LinkTextProps> = ({
   linkText,
   onPress,
   style,
+  disabled = false,
 }) => {
   const { isDarkMode } = useTheme();
   const Colors = getTheme(isDarkMode);
@@ -23,8 +25,8 @@ export const LinkText: React.FC<LinkTextProps> = ({
   return (
     <View style={[styles.container, style]}>
       {prefix && <Text style={styles.prefixText}>{prefix}</Text>}
-      <TouchableOpacity onPress={onPress}>
-        <Text style={styles.linkText}>{linkText}</Text>
+      <TouchableOpacity onPress={onPress} disabled={disabled}>
+        <Text style={[styles.linkText, disabled && styles.disabledText]}>{linkText}</Text>
       </TouchableOpacity>
     </View>
   );
@@ -46,5 +48,9 @@ const getStyles = (Colors: ThemeColors) => StyleSheet.create({
     color: Colors.textLink,
     fontSize: 16,
     fontWeight: '600',
+  },
+  disabledText: {
+    color: Colors.textSubtle,
+    opacity: 0.5,
   },
 });
