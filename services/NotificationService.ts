@@ -46,32 +46,49 @@ class NotificationService {
    */
   async initialize(): Promise<boolean> {
     try {
-      if (this.isInitialized) return true;
+      if (this.isInitialized) {
+        console.log('📋 Notification service already initialized');
+        return true;
+      }
+
+      console.log('🚀 Initializing notification service...');
 
       // Request permissions
       const hasPermission = await this.requestPermissions();
       if (!hasPermission) {
-        console.warn('Notification permissions not granted');
-        return false;
+        console.warn('⚠️ Notification permissions not granted, continuing without push notifications');
+        // Still mark as initialized to prevent repeated attempts
+        this.isInitialized = true;
+        return true;
       }
 
-      // Get push token
-      const token = await this.registerForPushNotifications();
-      if (token) {
-        this.expoPushToken = token;
-        await this.saveTokenToStorage(token);
-        await this.registerTokenWithBackend(token);
+      // Get push token (only on physical devices)
+      if (Device.isDevice) {
+        const token = await this.registerForPushNotifications();
+        if (token) {
+          this.expoPushToken = token;
+          await this.saveTokenToStorage(token);
+          await this.registerTokenWithBackend(token);
+        } else {
+          console.warn('⚠️ Could not get push token, continuing without push notifications');
+        }
+      } else {
+        console.log('📱 Running on simulator/emulator - skipping push token registration');
       }
 
-      // Set up notification listeners
+      // Set up notification listeners (works on all devices)
       this.setupNotificationListeners();
 
       this.isInitialized = true;
       console.log('✅ Notification service initialized successfully');
       return true;
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Failed to initialize notification service:', error);
-      return false;
+      
+      // Don't fail completely - just log the error and continue
+      console.warn('⚠️ Continuing app startup despite notification service error');
+      this.isInitialized = true; // Mark as initialized to prevent retry loops
+      return true; // Return true to not block app startup
     }
   }
 
@@ -177,14 +194,27 @@ class NotificationService {
         return null;
       }
 
+      // Add more defensive error handling
+      const projectId = '9964aa41-ae13-4306-92b4-9c3a933ee85b';
+      console.log('🔍 Attempting to get push token with projectId:', projectId);
+
       const token = await Notifications.getExpoPushTokenAsync({
-        projectId: 'your-expo-project-id', // Replace with your actual project ID
+        projectId: projectId,
       });
 
-      console.log('📱 Expo Push Token:', token.data);
+      console.log('📱 Expo Push Token received:', token.data);
       return token.data;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error getting push token:', error);
+      
+      // Check for specific error types and provide better error messages
+      if (error.message && error.message.includes('VALIDATION_ERROR')) {
+        console.error('❌ Project ID validation failed. Please check app.json configuration.');
+      } else if (error.message && error.message.includes('getConstans')) {
+        console.error('❌ React Native module error. This might be a simulator/emulator issue.');
+        console.warn('💡 Try running on a physical device or restart Metro bundler.');
+      }
+      
       return null;
     }
   }

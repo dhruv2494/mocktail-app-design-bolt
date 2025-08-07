@@ -9,6 +9,7 @@ import { store } from '@/store/store';
 import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
 import { LanguageProvider } from '@/contexts/LanguageContext';
 import { notificationService } from '@/services/NotificationService';
+import { APP_CONFIG } from '@/config/constants';
 
 function AppContent() {
   useFrameworkReady();
@@ -16,16 +17,28 @@ function AppContent() {
 
   useEffect(() => {
     const initializeApp = async () => {
-      // Initialize notification service
-      try {
-        const initialized = await notificationService.initialize();
-        if (initialized) {
-          console.log('✅ Notification service initialized successfully');
-        } else {
-          console.warn('⚠️  Notification service initialization failed');
+      // Initialize notification service only if enabled
+      if (APP_CONFIG.ENABLE_NOTIFICATIONS) {
+        try {
+          console.log('🔔 Starting notification service initialization...');
+          const initialized = await notificationService.initialize();
+          if (initialized) {
+            console.log('✅ Notification service initialized successfully');
+          } else {
+            console.warn('⚠️ Notification service initialization failed');
+          }
+        } catch (error: any) {
+          console.error('❌ Error initializing notification service:', error);
+          // Log specific error details for debugging
+          if (error.message) {
+            console.error('Error message:', error.message);
+          }
+          if (error.stack) {
+            console.error('Error stack:', error.stack);
+          }
         }
-      } catch (error) {
-        console.error('❌ Error initializing notification service:', error);
+      } else {
+        console.log('📵 Notification service disabled in configuration');
       }
     };
 
