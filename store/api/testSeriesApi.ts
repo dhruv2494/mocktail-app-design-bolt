@@ -4,32 +4,47 @@ import { API_CONFIG } from '@/config/constants';
 
 const BASE_URL = `${API_CONFIG.BASE_URL}/api`;
 
+// Updated to match backend TestSeries structure
 export interface TestSeries {
-  id: string;
-  title: string;
-  description: string;
-  category: string;
-  exam_type: string;
-  price: number;
-  original_price: number;
-  total_tests: number;
-  free_tests: number;
-  duration_months: number;
-  difficulty: 'easy' | 'medium' | 'hard' | 'mixed';
-  language: string;
-  instructions?: string;
+  id: number;
+  uuid: string;
+  name: string; // Backend uses 'name', not 'title'
+  name_gujarati?: string;
+  description?: string;
+  description_gujarati?: string;
+  title?: string; // Computed field for backwards compatibility
   is_active: boolean;
+  pricing_type: 'free' | 'paid';
+  price: number;
+  currency: string;
+  original_price?: number;
+  demo_tests_count?: number;
+  subscription_duration_days?: number;
+  discount_percentage?: number;
   is_featured: boolean;
-  negative_marking: boolean;
-  negative_marks: number;
-  pass_percentage: number;
   created_at: string;
   updated_at: string;
-  purchase_count: number;
-  rating: number;
-  rating_count: number;
-  topics: string[];
-  is_purchased: boolean;
+  
+  // Computed fields added by backend
+  categories_count?: number;
+  tests_count?: number;
+  is_subscribed?: boolean;
+  
+  // Backwards compatibility fields
+  total_tests?: number;
+  free_tests?: number;
+  duration_months?: number;
+  difficulty?: 'easy' | 'medium' | 'hard' | 'mixed';
+  language?: string;
+  instructions?: string;
+  negative_marking?: boolean;
+  negative_marks?: number;
+  pass_percentage?: number;
+  purchase_count?: number;
+  rating?: number;
+  rating_count?: number;
+  topics?: string[];
+  is_purchased?: boolean;
   purchased_at?: string;
   expires_at?: string;
 }
@@ -206,7 +221,7 @@ export const testSeriesApi = createApi({
     // Get single test series by ID
     getTestSeriesById: builder.query<TestSeriesResponse, string>({
       query: (id) => ({
-        url: `/test-series/${id}`,
+        url: `/test-series/by-id/${id}`,
         method: 'GET',
       }),
       providesTags: (result, error, id) => [{ type: 'TestSeries', id }],
@@ -233,7 +248,7 @@ export const testSeriesApi = createApi({
     // Get tests in a specific test series
     getSeriesTests: builder.query<SeriesTestsResponse, string>({
       query: (seriesId) => ({
-        url: `/test-series/${seriesId}/tests`,
+        url: `/test-series/by-id/${seriesId}/tests`,
         method: 'GET',
       }),
       providesTags: (result, error, seriesId) => [

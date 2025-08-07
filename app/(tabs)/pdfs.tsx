@@ -6,7 +6,7 @@ import { router } from 'expo-router';
 import { getTheme } from '@/theme';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { useGetPDFsQuery, useGetPDFDownloadUrlMutation, useIncrementPDFViewMutation, PDFListParams } from '@/store/api/pdfApi';
+import { useGetPDFsQuery, useIncrementPDFViewMutation, PDFListParams } from '@/store/api/pdfApi';
 import { PDFListSkeleton, CategorySkeleton, SearchSkeleton } from '@/components/shared/SkeletonLoader';
 
 export default function PDFsScreen() {
@@ -37,7 +37,6 @@ export default function PDFsScreen() {
     refetch,
   } = useGetPDFsQuery(queryParams);
 
-  const [getPDFDownloadUrl] = useGetPDFDownloadUrlMutation();
   const [incrementPDFView] = useIncrementPDFViewMutation();
 
   const categories = [
@@ -62,33 +61,6 @@ export default function PDFsScreen() {
     }
   }, [refetch]);
 
-  const handleDownload = useCallback(async (pdfId: string) => {
-    try {
-      const response = await getPDFDownloadUrl(pdfId).unwrap();
-      
-      // In a real app, you would use a file download library like expo-file-system
-      // For now, we'll show an alert with the download URL
-      Alert.alert(
-        'Download Ready',
-        `PDF: ${response.data.filename}\nSize: ${(response.data.size / 1024 / 1024).toFixed(2)} MB`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { 
-            text: 'Download', 
-            onPress: () => {
-              // Here you would implement actual file download
-              console.log('Download URL:', response.data.download_url);
-            }
-          }
-        ]
-      );
-    } catch (error: any) {
-      Alert.alert(
-        'Download Error',
-        error?.data?.message || 'Failed to get download URL'
-      );
-    }
-  }, [getPDFDownloadUrl]);
 
   const handlePreview = useCallback(async (pdfId: string) => {
     try {
@@ -277,24 +249,11 @@ export default function PDFsScreen() {
             {/* Actions */}
             <View style={styles.actionContainer}>
               <TouchableOpacity 
-                style={styles.previewButton}
+                style={styles.viewButton}
                 onPress={() => handlePreview(pdf.id)}
               >
-                <Eye size={16} color={Colors.blue500} />
-                <Text style={styles.previewButtonText}>{t.pdfs?.preview || 'Preview'}</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={[
-                  styles.downloadButton,
-                  pdf.access_level === 'premium' && styles.premiumDownloadButton
-                ]}
-                onPress={() => handleDownload(pdf.id)}
-              >
-                <Download size={16} color={Colors.white} />
-                <Text style={styles.downloadButtonText}>
-                  {pdf.access_level === 'premium' ? (t.pdfs?.premiumDownload || 'Premium Download') : (t.pdfs?.download || 'Download')}
-                </Text>
+                <Eye size={16} color={Colors.white} />
+                <Text style={styles.viewButtonText}>{t.pdfs?.view || 'View PDF'}</Text>
               </TouchableOpacity>
             </View>
             </View>
@@ -506,25 +465,8 @@ const getStyles = (Colors: any) => StyleSheet.create({
   },
   actionContainer: {
     flexDirection: 'row',
-    gap: 12,
   },
-  previewButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: Colors.primaryLight,
-  },
-  previewButtonText: {
-    fontSize: 14,
-    color: Colors.primaryLight,
-    fontWeight: '500',
-    marginLeft: 4,
-  },
-  downloadButton: {
+  viewButton: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
@@ -533,14 +475,9 @@ const getStyles = (Colors: any) => StyleSheet.create({
     borderRadius: 8,
     backgroundColor: Colors.primaryLight,
   },
-  premiumDownloadButton: {
-    flex: 0,
-    backgroundColor: Colors.warning,
-    width: '60%',
-  },
-  downloadButtonText: {
+  viewButtonText: {
     fontSize: 14,
-    color: '#FFFFFF',
+    color: Colors.white,
     fontWeight: '500',
     marginLeft: 4,
   },

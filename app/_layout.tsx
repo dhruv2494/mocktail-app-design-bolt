@@ -6,21 +6,16 @@ import Toast from 'react-native-toast-message';
 import { toastConfig } from '@/toastConfig';
 import { Provider } from 'react-redux';
 import { store } from '@/store/store';
-import { useAuth } from '@/hooks/useAuth';
 import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
 import { LanguageProvider } from '@/contexts/LanguageContext';
 import { notificationService } from '@/services/NotificationService';
 
 function AppContent() {
   useFrameworkReady();
-  const { initializeAuthState } = useAuth();
   const { isDarkMode } = useTheme();
 
   useEffect(() => {
     const initializeApp = async () => {
-      // Initialize authentication
-      await initializeAuthState();
-      
       // Initialize notification service
       try {
         const initialized = await notificationService.initialize();
@@ -35,11 +30,12 @@ function AppContent() {
     };
 
     initializeApp();
-  }, [initializeAuthState]);
+  }, []);
 
   return (
     <>
       <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="index" />
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="test" />

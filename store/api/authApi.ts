@@ -2,7 +2,7 @@ import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { RootState } from '../store';
 
-import { API_CONFIG } from '@/config/constants';
+import { API_CONFIG, AUTH_CONFIG } from '@/config/constants';
 
 const BASE_URL = `${API_CONFIG.BASE_URL}/api`;
 
@@ -57,7 +57,7 @@ export interface MessageResponse {
 
 export interface ProfileResponse {
   success: boolean;
-  user: User;
+  data: User;
 }
 
 export const authApi = createApi({
@@ -89,7 +89,7 @@ export const authApi = createApi({
         try {
           const { data } = await queryFulfilled;
           // Store token in AsyncStorage
-          await AsyncStorage.setItem('token', data.token);
+          await AsyncStorage.setItem(AUTH_CONFIG.TOKEN_KEY, data.token);
         } catch (error) {
           console.error('Register failed:', error);
         }
@@ -105,7 +105,7 @@ export const authApi = createApi({
         try {
           const { data } = await queryFulfilled;
           // Store token in AsyncStorage
-          await AsyncStorage.setItem('token', data.token);
+          await AsyncStorage.setItem(AUTH_CONFIG.TOKEN_KEY, data.token);
         } catch (error) {
           console.error('Login failed:', error);
         }

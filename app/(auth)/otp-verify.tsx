@@ -2,10 +2,10 @@ import React, { useState } from 'react';
 import { View, Text } from 'react-native';
 import { router } from 'expo-router';
 import Toast from 'react-native-toast-message';
-import { useVerifyOTPMutation } from '@/store/api/authApi';
+import { useVerifyOTPMutation, useLoginMutation } from '@/store/api/authApi';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '@/store/store';
-import { clearPendingVerification, setError } from '@/store/slices/authSlice';
+import { clearPendingVerification, setError, setCredentials } from '@/store/slices/authSlice';
 import { AuthLayout, FormInput, GradientButton, LinkText } from '@/components/shared';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { API_CONFIG } from '@/config/constants';
@@ -18,6 +18,7 @@ export default function OtpVerifyScreen() {
   const dispatch = useDispatch();
   const { pendingVerification } = useSelector((state: RootState) => state.auth);
   const [verifyOTP, { isLoading }] = useVerifyOTPMutation();
+  const [login] = useLoginMutation();
   const { t } = useLanguage();
 
   const validateForm = () => {
@@ -74,8 +75,36 @@ export default function OtpVerifyScreen() {
       if (verificationType === 'forgot-password') {
         // Don't clear verification for forgot password - update-password screen needs the email
         setTimeout(() => router.push('/(auth)/update-password'), 1000);
+      } else if (verificationType === 'login-verification') {
+        // For login verification, automatically log the user in
+        try {
+          const loginResult = await login({
+            email: pendingVerification.email!,
+            password: pendingVerification.password!,
+          }).unwrap();
+
+          dispatch(setCredentials({ token: loginResult.token }));
+          dispatch(clearPendingVerification());
+
+          Toast.show({
+            type: 'success',
+            text1: 'Login Successful',
+            text2: 'Welcome back! You are now logged in.',
+          });
+
+          setTimeout(() => router.push('/'), 1000);
+        } catch (loginError) {
+          // If auto-login fails, redirect to login screen
+          dispatch(clearPendingVerification());
+          Toast.show({
+            type: 'error',
+            text1: 'Email Verified',
+            text2: 'Please login again to continue.',
+          });
+          setTimeout(() => router.push('/(auth)/login'), 1000);
+        }
       } else {
-        // For registration, clear verification and redirect to dashboard
+        // For new registrations, clear verification and redirect to dashboard
         dispatch(clearPendingVerification());
         setTimeout(() => router.push('/'), 1000);
       }
@@ -108,7 +137,7 @@ export default function OtpVerifyScreen() {
           body: JSON.stringify({ email: pendingVerification.email })
         });
       } else {
-        // For registration, call resend OTP API
+        // For registration or login verification, call resend OTP API
         await fetch(`${API_CONFIG.BASE_URL}/api/users/resend-otp`, {
           method: 'POST',
           headers: { 

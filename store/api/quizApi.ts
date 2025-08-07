@@ -4,79 +4,92 @@ import { API_CONFIG } from '@/config/constants';
 
 const BASE_URL = `${API_CONFIG.BASE_URL}/api`;
 
+// Updated interface to match backend question structure
 export interface QuizQuestion {
-  id: string;
+  id: number;
+  uuid: string;
   question_text: string;
+  question_text_gujarati?: string;
   options: {
     A: string;
     B: string;
     C: string;
     D: string;
   };
+  options_gujarati?: {
+    A: string;
+    B: string;
+    C: string;
+    D: string;
+  };
   marks: number;
-  negative_marks: number;
-  subject: string;
+  difficulty_level: 'easy' | 'medium' | 'hard';
+  question_type: string;
+  subject?: string;
   topic?: string;
-  difficulty: 'easy' | 'medium' | 'hard';
-  language: string;
   explanation?: string;
-  time_limit?: number; // in seconds
-  order_index: number;
+  explanation_gujarati?: string;
 }
 
+// Updated to match backend TestSession structure
 export interface QuizSession {
-  id: string;
-  user_id: string;
-  test_id: string;
-  test_type: 'free' | 'series' | 'series-free';
-  series_id?: string;
+  id: number;
+  uuid: string;
+  user_id: number;
+  test_id: number;
+  start_time: string;
+  end_time?: string;
+  status: 'not_started' | 'in_progress' | 'paused' | 'completed' | 'timed_out' | 'abandoned' | 'terminated';
+  time_remaining: number; // in seconds
+  total_time_spent: number;
+  is_demo: boolean;
   language: string;
-  total_questions: number;
-  duration: number; // in minutes
-  marks_per_question: number;
-  negative_marks: number;
-  started_at: string;
-  expires_at: string;
-  submitted_at?: string;
-  status: 'active' | 'paused' | 'submitted' | 'expired';
-  time_remaining?: number; // in seconds
-  can_pause: boolean;
-  allow_review: boolean;
-  shuffle_questions: boolean;
-  shuffle_options: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
-export interface StartQuizRequest {
-  test_id: string;
-  test_type: 'free' | 'series' | 'series-free';
-  series_id?: string;
+// Updated to match backend API structure
+export interface StartTestRequest {
+  testUuid: string;
   language?: string;
 }
 
-export interface StartQuizResponse {
+// Updated to match backend start test response
+export interface StartTestResponse {
   success: boolean;
   data: {
-    session: QuizSession;
+    session_id: string;
+    status: string;
+    started_at: string;
+    time_remaining: number;
+    is_demo: boolean;
+    is_resuming?: boolean;
+  };
+}
+
+// For getting questions after starting test
+export interface TestQuestionsResponse {
+  success: boolean;
+  data: {
     questions: QuizQuestion[];
     test_info: {
+      id: number;
+      uuid: string;
       title: string;
-      description?: string;
-      instructions?: string;
+      duration_minutes: number;
       total_marks: number;
-      pass_percentage: number;
-      attempt_number: number;
-      max_attempts: number;
+      is_demo: boolean;
     };
   };
 }
 
+// Updated to match what backend expects
 export interface SaveAnswerRequest {
-  session_id: string;
-  question_id: string;
+  session_uuid: string;
+  question_id: number;
   selected_option: 'A' | 'B' | 'C' | 'D' | null;
   time_spent: number; // in seconds
   is_flagged?: boolean;
-  is_auto_save?: boolean;
 }
 
 export interface SaveAnswerResponse {
@@ -87,53 +100,41 @@ export interface SaveAnswerResponse {
   };
 }
 
-export interface SubmitQuizRequest {
-  session_id: string;
+// Updated to match backend test submission
+export interface SubmitTestRequest {
+  session_uuid: string;
   answers: Array<{
-    question_id: string;
+    question_id: number;
     selected_option: 'A' | 'B' | 'C' | 'D' | null;
     time_spent: number;
     is_flagged?: boolean;
   }>;
   submitted_at: string;
-  time_taken: number; // total time in seconds
-  is_manual_submit: boolean;
+  time_taken: number;
 }
 
-export interface SubmitQuizResponse {
+// Updated to match backend test submission response
+export interface SubmitTestResponse {
   success: boolean;
   data: {
-    result_id: string;
     session_id: string;
+    result_id?: string;
     total_score: number;
     correct_answers: number;
     wrong_answers: number;
     unanswered: number;
     percentage: number;
-    grade: string;
     passed: boolean;
     time_taken: number;
     rank?: number;
     total_participants?: number;
-    detailed_results: Array<{
-      question_id: string;
-      question_text: string;
-      selected_option: 'A' | 'B' | 'C' | 'D' | null;
-      correct_option: 'A' | 'B' | 'C' | 'D';
-      is_correct: boolean;
-      marks_obtained: number;
-      time_spent: number;
-      subject: string;
-      topic?: string;
-      explanation?: string;
-    }>;
   };
 }
 
+// For pause/resume functionality
 export interface PauseResumeRequest {
-  session_id: string;
+  session_uuid: string;
   action: 'pause' | 'resume';
-  timestamp: string;
 }
 
 export interface PauseResumeResponse {
@@ -210,70 +211,86 @@ export const quizApi = createApi({
   }),
   tagTypes: ['QuizSession', 'QuizResult', 'SavedAnswers'],
   endpoints: (builder) => ({
-    // Start a new quiz session
-    startQuiz: builder.mutation<StartQuizResponse, StartQuizRequest>({
-      query: (body) => ({
-        url: '/quiz/start',
+    // Start a new test session using backend API
+    startTest: builder.mutation<StartTestResponse, StartTestRequest>({
+      query: ({ testUuid, language = 'en' }) => ({
+        url: `/tests/${testUuid}/start`,
         method: 'POST',
-        body,
+        body: { language },
       }),
       invalidatesTags: ['QuizSession'],
     }),
 
-    // Get current session status (for resuming)
-    getSessionStatus: builder.query<GetSessionStatusResponse, string>({
-      query: (sessionId) => ({
-        url: `/quiz/session/${sessionId}`,
+    // Get questions for a test
+    getTestQuestions: builder.query<TestQuestionsResponse, string>({
+      query: (testUuid) => ({
+        url: `/tests/${testUuid}/questions`,
         method: 'GET',
       }),
-      providesTags: (result, error, sessionId) => [
-        { type: 'QuizSession', id: sessionId },
-        { type: 'SavedAnswers', id: sessionId },
+    }),
+
+    // Get single test by UUID for test info
+    getTestByUuid: builder.query<{
+      success: boolean;
+      data: {
+        id: number;
+        uuid: string;
+        title: string;
+        description?: string;
+        duration_minutes: number;
+        total_marks: number;
+        passing_marks: number;
+        is_active: boolean;
+        questions_count: number;
+      };
+    }, string>({
+      query: (testUuid) => ({
+        url: `/tests/${testUuid}`,
+        method: 'GET',
+      }),
+    }),
+
+    // Save individual answer (will need backend implementation)
+    saveAnswer: builder.mutation<{ success: boolean }, SaveAnswerRequest>({
+      query: (body) => ({
+        url: `/test-sessions/${body.session_uuid}/answers`,
+        method: 'POST',
+        body: {
+          question_id: body.question_id,
+          selected_option: body.selected_option,
+          time_spent: body.time_spent,
+          is_flagged: body.is_flagged,
+        },
+      }),
+      invalidatesTags: (result, error, { session_uuid }) => [
+        { type: 'SavedAnswers', id: session_uuid },
       ],
     }),
 
-    // Save individual answer (auto-save functionality)
-    saveAnswer: builder.mutation<SaveAnswerResponse, SaveAnswerRequest>({
+    // Pause or resume test session (will need backend implementation)
+    pauseResumeTest: builder.mutation<PauseResumeResponse, PauseResumeRequest>({
       query: (body) => ({
-        url: '/quiz/save-answer',
+        url: `/test-sessions/${body.session_uuid}/${body.action}`,
         method: 'POST',
-        body,
       }),
-      invalidatesTags: (result, error, { session_id }) => [
-        { type: 'SavedAnswers', id: session_id },
-      ],
-      // Optimistic update for better UX
-      onQueryStarted: async ({ session_id }, { dispatch, queryFulfilled }) => {
-        try {
-          await queryFulfilled;
-        } catch (error) {
-          // Could implement retry logic here
-          console.warn('Failed to save answer:', error);
-        }
-      },
-    }),
-
-    // Pause or resume quiz session
-    pauseResumeQuiz: builder.mutation<PauseResumeResponse, PauseResumeRequest>({
-      query: (body) => ({
-        url: '/quiz/pause-resume',
-        method: 'POST',
-        body,
-      }),
-      invalidatesTags: (result, error, { session_id }) => [
-        { type: 'QuizSession', id: session_id },
+      invalidatesTags: (result, error, { session_uuid }) => [
+        { type: 'QuizSession', id: session_uuid },
       ],
     }),
 
-    // Submit quiz and get results
-    submitQuiz: builder.mutation<SubmitQuizResponse, SubmitQuizRequest>({
+    // Submit test and get results (will need backend implementation)
+    submitTest: builder.mutation<SubmitTestResponse, SubmitTestRequest>({
       query: (body) => ({
-        url: '/quiz/submit',
+        url: `/test-sessions/${body.session_uuid}/submit`,
         method: 'POST',
-        body,
+        body: {
+          answers: body.answers,
+          submitted_at: body.submitted_at,
+          time_taken: body.time_taken,
+        },
       }),
-      invalidatesTags: (result, error, { session_id }) => [
-        { type: 'QuizSession', id: session_id },
+      invalidatesTags: (result, error, { session_uuid }) => [
+        { type: 'QuizSession', id: session_uuid },
         'QuizResult',
       ],
     }),
@@ -357,54 +374,36 @@ export const quizApi = createApi({
       }
     ),
 
-    // Validate session before starting (check eligibility)
-    validateQuizSession: builder.query<{
+    // Validate test access (using existing subscription access endpoint)
+    validateTestAccess: builder.query<{
       success: boolean;
       data: {
-        can_start: boolean;
+        has_access: boolean;
+        subscription_type: 'free' | 'paid' | null;
+        can_access_demo: boolean;
+        demo_tests_remaining: number;
         reason?: string;
-        attempts_used: number;
-        max_attempts: number;
-        time_until_next_attempt?: number;
-        existing_session?: {
-          id: string;
-          status: string;
-          time_remaining: number;
-        };
       };
-    }, { test_id: string; test_type: string; series_id?: string }>(
-      {
-        query: ({ test_id, test_type, series_id }) => {
-          const params = new URLSearchParams({
-            test_id,
-            test_type,
-          });
-          
-          if (series_id) {
-            params.append('series_id', series_id);
-          }
-
-          return {
-            url: `/quiz/validate?${params.toString()}`,
-            method: 'GET',
-          };
-        },
-      }
-    ),
+    }, { testSeriesUuid: string }>({
+      query: ({ testSeriesUuid }) => ({
+        url: `/test-series/${testSeriesUuid}/subscription-access`,
+        method: 'GET',
+      }),
+    }),
   }),
 });
 
 export const {
-  useStartQuizMutation,
-  useGetSessionStatusQuery,
-  useLazyGetSessionStatusQuery,
+  useStartTestMutation,
+  useGetTestQuestionsQuery,
+  useGetTestByUuidQuery,
   useSaveAnswerMutation,
-  usePauseResumeQuizMutation,
-  useSubmitQuizMutation,
+  usePauseResumeTestMutation,
+  useSubmitTestMutation,
   useReviewAnswersQuery,
   useLazyReviewAnswersQuery,
   useGetQuizHistoryQuery,
   useGetQuizLeaderboardQuery,
-  useValidateQuizSessionQuery,
-  useLazyValidateQuizSessionQuery,
+  useValidateTestAccessQuery,
+  useLazyValidateTestAccessQuery,
 } = quizApi;

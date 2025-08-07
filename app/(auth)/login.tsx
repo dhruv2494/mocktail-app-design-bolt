@@ -2,9 +2,9 @@ import React, { useState } from 'react';
 import { StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import Toast from 'react-native-toast-message';
-import { useLoginMutation } from '@/store/api/authApi';
+import { useLoginMutation, useResendOTPMutation } from '@/store/api/authApi';
 import { useDispatch } from 'react-redux';
-import { setCredentials, setError } from '@/store/slices/authSlice';
+import { setCredentials, setError, setPendingVerification } from '@/store/slices/authSlice';
 import { AuthLayout, FormInput, GradientButton, LinkText } from '@/components/shared';
 import { getTheme } from '@/theme';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -19,6 +19,7 @@ export default function LoginScreen() {
   const { t } = useLanguage();
   const dispatch = useDispatch();
   const [login, { isLoading }] = useLoginMutation();
+  const [resendOTP] = useResendOTPMutation();
 
   const validateForm = () => {
     if (!email.trim()) {
@@ -60,6 +61,46 @@ export default function LoginScreen() {
       router.push('/');
     } catch (error: any) {
       const errorMessage = error?.data?.message || t.auth.loginFailed;
+      
+      // Check if error is due to unverified email
+      if (errorMessage.includes('Please verify your email before logging in') || 
+          errorMessage.includes('verify your email') ||
+          error?.status === 403) {
+        
+        try {
+          // Automatically send OTP to user's email
+          await resendOTP({ email: email.trim().toLowerCase() }).unwrap();
+          
+          // Set pending verification state with password for auto-login after verification
+          dispatch(setPendingVerification({
+            email: email.trim().toLowerCase(),
+            isOTPSent: true,
+            type: 'login-verification',
+            password: password
+          }));
+
+          Toast.show({
+            type: 'info',
+            text1: 'Email Verification Required',
+            text2: 'OTP sent to your email. Please verify to continue.',
+          });
+
+          // Navigate to OTP verification screen
+          router.push('/(auth)/otp-verify');
+          return;
+          
+        } catch (otpError) {
+          // If OTP sending fails, fall back to showing the original error
+          Toast.show({
+            type: 'error',
+            text1: 'Email Verification Required',
+            text2: 'Please verify your email. Unable to send OTP automatically.',
+          });
+          return;
+        }
+      }
+      
+      // For other errors, show normal error message
       dispatch(setError(errorMessage));
       Toast.show({
         type: 'error',

@@ -2,7 +2,7 @@ import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { API_CONFIG } from '@/config/constants';
+import { API_CONFIG, AUTH_CONFIG } from '@/config/constants';
 
 // Configure how notifications are handled when the app is in the foreground
 Notifications.setNotificationHandler({
@@ -361,7 +361,7 @@ class NotificationService {
    */
   private async registerTokenWithBackend(token: string): Promise<boolean> {
     try {
-      const authToken = await AsyncStorage.getItem('auth_token');
+      const authToken = await AsyncStorage.getItem(AUTH_CONFIG.TOKEN_KEY);
       if (!authToken) {
         console.warn('No auth token found, cannot register push token');
         return false;

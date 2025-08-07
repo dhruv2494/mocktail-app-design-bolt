@@ -7,7 +7,6 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { getTheme } from '@/theme';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { AuthGuard } from '@/components/AuthGuard';
 
 export default function PaymentScreen() {
   const { isDarkMode } = useTheme();
@@ -85,8 +84,7 @@ export default function PaymentScreen() {
   const styles = getStyles(Colors);
 
   return (
-    <AuthGuard requireEmailVerification={true}>
-      <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container}>
         <ScrollView showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
@@ -223,7 +221,6 @@ export default function PaymentScreen() {
         </View>
         </ScrollView>
       </SafeAreaView>
-    </AuthGuard>
   );
 }
 

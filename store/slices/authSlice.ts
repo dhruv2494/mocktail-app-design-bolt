@@ -1,5 +1,6 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { AUTH_CONFIG } from '@/config/constants';
 
 export interface User {
   uuid: string;
@@ -20,7 +21,8 @@ export interface AuthState {
   pendingVerification: {
     email: string | null;
     isOTPSent: boolean;
-    type: 'registration' | 'forgot-password' | null;
+    type: 'registration' | 'forgot-password' | 'login-verification' | null;
+    password?: string | null; // Store password for login verification
   };
 }
 
@@ -34,6 +36,7 @@ const initialState: AuthState = {
     email: null,
     isOTPSent: false,
     type: null,
+    password: null,
   },
 };
 
@@ -61,7 +64,7 @@ const authSlice = createSlice({
     },
     setPendingVerification: (
       state,
-      action: PayloadAction<{ email: string; isOTPSent: boolean; type: 'registration' | 'forgot-password' }>
+      action: PayloadAction<{ email: string; isOTPSent: boolean; type: 'registration' | 'forgot-password' | 'login-verification'; password?: string }>
     ) => {
       state.pendingVerification = action.payload;
     },
@@ -70,6 +73,7 @@ const authSlice = createSlice({
         email: null,
         isOTPSent: false,
         type: null,
+        password: null,
       };
     },
     logout: (state) => {
@@ -81,8 +85,9 @@ const authSlice = createSlice({
         email: null,
         isOTPSent: false,
         type: null,
+        password: null,
       };
-      AsyncStorage.removeItem('token');
+      AsyncStorage.removeItem(AUTH_CONFIG.TOKEN_KEY);
     },
     initializeAuth: (
       state,

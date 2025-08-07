@@ -1,93 +1,65 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, RefreshControl, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Search, Filter, Star, Clock, Users, Play, Lock, CircleCheck as CheckCircle, ShoppingCart, Gift, AlertCircle } from 'lucide-react-native';
+import { Search, Filter, Star, Clock, Users, Play, Lock, CircleCheck as CheckCircle, ShoppingCart, Gift, AlertCircle, ChevronRight, BookOpen, Award } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { getTheme } from '@/theme';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { useGetTestSeriesQuery, useGetTestSeriesCategoriesQuery, useGetTestSeriesStatsQuery, TestSeries } from '@/store/api/testSeriesApi';
+import { useGetTestSeriesQuery, TestSeries } from '@/store/api/testSeriesApi';
 import { SkeletonLoader } from '@/components/shared/SkeletonLoader';
 
 export default function TestSeriesScreen() {
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('');
   const [page, setPage] = useState(1);
   
   const { isDarkMode } = useTheme();
   const { t } = useLanguage();
   const Colors = getTheme(isDarkMode);
 
-  // API calls
+  // API calls using existing working API
   const {
-    data: seriesData,
-    error: seriesError,
-    isLoading: seriesLoading,
-    refetch: refetchSeries,
+    data: testSeriesResponse,
+    error: testSeriesError,
+    isLoading: testSeriesLoading,
+    refetch: refetchTestSeries,
   } = useGetTestSeriesQuery({
     page,
     limit: 20,
-    search: searchQuery,
-    category: selectedCategory || undefined,
+    search: searchQuery || undefined,
     sortBy: 'created_at',
     sortOrder: 'DESC',
   });
 
-  const {
-    data: categoriesData,
-    isLoading: categoriesLoading,
-  } = useGetTestSeriesCategoriesQuery();
+  const testSeries = testSeriesResponse?.data || [];
+  const pagination = testSeriesResponse?.pagination;
 
-  const {
-    data: statsData,
-    isLoading: statsLoading,
-  } = useGetTestSeriesStatsQuery();
-
-  // Prepare categories with "All" option
-  const categories = [
-    { key: '', label: t.testSeries.categories.all },
-    ...(categoriesData?.data?.map(cat => ({
-      key: cat.name,
-      label: cat.name,
-    })) || []),
-  ];
-
-  const testSeries = seriesData?.data || [];
-  const pagination = seriesData?.pagination;
+  const handleTestSeriesSelect = (series: TestSeries) => {
+    // Navigate to categories list for this test series
+    router.push({
+      pathname: '/test/series-detail',
+      params: {
+        seriesId: series.id.toString(), // Convert to string for API compatibility
+        title: series.name || series.title || 'Test Series',
+      },
+    });
+  };
 
   const handlePurchase = (series: TestSeries) => {
     router.push({
       pathname: '/payment',
       params: {
-        seriesId: series.id,
-        title: series.title,
-        price: series.price,
+        seriesId: series.id.toString(),
+        title: series.name || series.title || 'Test Series',
+        price: series.price.toString(),
         type: 'test-series',
       },
     });
   };
 
   const handleStartTest = (series: TestSeries) => {
-    if (series.is_purchased) {
-      router.push({
-        pathname: '/test/quiz',
-        params: {
-          seriesId: series.id,
-          testType: 'series',
-          title: series.title,
-        },
-      });
-    } else {
-      // Start free test if available
-      router.push({
-        pathname: '/test/quiz',
-        params: {
-          seriesId: series.id,
-          testType: 'series-free',
-          title: `${series.title} - Free Trial`,
-        },
-      });
-    }
+    // Navigate to test series categories
+    handleTestSeriesSelect(series);
   };
 
   const renderErrorState = () => (
@@ -101,7 +73,7 @@ export default function TestSeriesScreen() {
       </Text>
       <TouchableOpacity
         style={[styles.retryButton, { backgroundColor: Colors.primary }]}
-        onPress={refetchSeries}
+        onPress={refetchTestSeries}
       >
         <Text style={styles.retryButtonText}>{t.common.retry || 'Retry'}</Text>
       </TouchableOpacity>
@@ -112,18 +84,110 @@ export default function TestSeriesScreen() {
     <View style={[styles.centerContainer, { paddingTop: 60 }]}>
       <ShoppingCart size={48} color={Colors.textSubtle} />
       <Text style={[styles.emptyTitle, { color: Colors.textPrimary }]}>
-        {t.testSeries.noSeries || 'No test series available'}
+        {t.testSeries?.noSeries || 'No test series available'}
       </Text>
       <Text style={[styles.emptyMessage, { color: Colors.textSubtle }]}>
-        {t.testSeries.checkBackLater || 'Check back later for new series'}
+        {t.testSeries?.checkBackLater || 'Check back later for new series'}
       </Text>
     </View>
+  );
+
+  const renderTestSeriesCard = (series: TestSeries, index: number) => (
+    <TouchableOpacity
+      key={series.id}
+      style={styles.seriesCard}
+      onPress={() => handleTestSeriesSelect(series)}
+    >
+      {/* Header */}
+      <View style={styles.seriesHeader}>
+        <View style={styles.seriesHeaderLeft}>
+          <Text style={styles.seriesTitle}>{series.name || series.title}</Text>
+          <View style={styles.ratingContainer}>
+            <Star size={14} color={Colors.warning} fill={Colors.warning} />
+            <Text style={styles.rating}>{series.rating || 4.5}</Text>
+            <Text style={styles.studentsCount}>({series.purchase_count || 0} students)</Text>
+          </View>
+        </View>
+        {series.is_purchased && (
+          <View style={styles.purchasedBadge}>
+            <CheckCircle size={16} color={Colors.success} />
+            <Text style={styles.purchasedText}>Enrolled</Text>
+          </View>
+        )}
+      </View>
+
+      {/* Description */}
+      {series.description && (
+        <Text style={styles.seriesDescription} numberOfLines={2}>{series.description}</Text>
+      )}
+
+      {/* Stats */}
+      <View style={styles.statsContainer}>
+        <View style={styles.statItem}>
+          <Clock size={16} color={Colors.textSubtle} />
+          <Text style={styles.statText}>{Math.ceil((series.subscription_duration_days || 365) / 30)} months</Text>
+        </View>
+        <View style={styles.statItem}>
+          <Play size={16} color={Colors.textSubtle} />
+          <Text style={styles.statText}>{series.tests_count || series.total_tests || 0} tests</Text>
+        </View>
+        <View style={styles.statItem}>
+          <Gift size={16} color={Colors.textSubtle} />
+          <Text style={styles.statText}>{series.demo_tests_count || series.free_tests || 0} free</Text>
+        </View>
+      </View>
+
+      {/* Price and Action */}
+      <View style={styles.actionContainer}>
+        <View style={styles.priceContainer}>
+          <Text style={styles.price}>₹{series.price}</Text>
+          {series.original_price && series.original_price > series.price && (
+            <>
+              <Text style={styles.originalPrice}>₹{series.original_price}</Text>
+              <View style={styles.discountBadge}>
+                <Text style={styles.discountText}>
+                  {Math.round((1 - series.price / series.original_price) * 100)}% OFF
+                </Text>
+              </View>
+            </>
+          )}
+        </View>
+        
+        <View style={styles.buttonContainer}>
+          {(series.demo_tests_count || series.free_tests || 0) > 0 && !series.is_purchased && (
+            <TouchableOpacity 
+              style={styles.freeTestButton}
+              onPress={() => handleStartTest(series)}
+            >
+              <Text style={styles.freeTestText}>Try Free</Text>
+            </TouchableOpacity>
+          )}
+          
+          {series.is_purchased ? (
+            <TouchableOpacity 
+              style={styles.startButton}
+              onPress={() => handleTestSeriesSelect(series)}
+            >
+              <Text style={styles.startButtonText}>Continue</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity 
+              style={styles.purchaseButton}
+              onPress={() => handlePurchase(series)}
+            >
+              <Lock size={16} color={Colors.white} />
+              <Text style={styles.purchaseButtonText}>Enroll Now</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+    </TouchableOpacity>
   );
 
   const styles = getStyles(Colors);
 
   // Show error state if there's an error
-  if (seriesError) {
+  if (testSeriesError) {
     return (
       <SafeAreaView style={styles.container}>
         {renderErrorState()}
@@ -135,7 +199,7 @@ export default function TestSeriesScreen() {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>{t.testSeries.title}</Text>
+        <Text style={styles.headerTitle}>Test Series</Text>
         <TouchableOpacity style={styles.filterButton}>
           <Filter size={20} color={Colors.textPrimary} />
         </TouchableOpacity>
@@ -147,44 +211,12 @@ export default function TestSeriesScreen() {
           <Search size={20} color={Colors.textSubtle} />
           <TextInput
             style={styles.searchInput}
-            placeholder={t.testSeries.searchPlaceholder}
+            placeholder="Search test series..."
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
         </View>
       </View>
-
-      {/* Categories */}
-      <ScrollView 
-        horizontal 
-        showsHorizontalScrollIndicator={false}
-        style={styles.categoriesContainer}
-      >
-        {categoriesLoading ? (
-          // Show skeleton loaders for categories
-          Array.from({ length: 5 }).map((_, index) => (
-            <SkeletonLoader key={index} width={100} height={32} style={styles.categorySkeleton} />
-          ))
-        ) : (
-          categories.map((category) => (
-            <TouchableOpacity
-              key={category.key}
-              style={[
-                styles.categoryChip,
-                selectedCategory === category.key && styles.categoryChipActive
-              ]}
-              onPress={() => setSelectedCategory(category.key)}
-            >
-              <Text style={[
-                styles.categoryText,
-                selectedCategory === category.key && styles.categoryTextActive
-              ]}>
-                {category.label}
-              </Text>
-            </TouchableOpacity>
-          ))
-        )}
-      </ScrollView>
 
       {/* Test Series List */}
       <ScrollView 
@@ -192,14 +224,14 @@ export default function TestSeriesScreen() {
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
-            refreshing={seriesLoading}
-            onRefresh={refetchSeries}
+            refreshing={testSeriesLoading}
+            onRefresh={refetchTestSeries}
             colors={[Colors.primary]}
             tintColor={Colors.primary}
           />
         }
       >
-        {seriesLoading ? (
+        {testSeriesLoading ? (
           // Show skeleton loaders for test series
           Array.from({ length: 3 }).map((_, index) => (
             <View key={index} style={styles.seriesCard}>
@@ -216,103 +248,7 @@ export default function TestSeriesScreen() {
         ) : testSeries.length === 0 ? (
           renderEmptyState()
         ) : (
-          testSeries.map((series) => (
-            <View key={series.id} style={styles.seriesCard}>
-            {/* Header */}
-            <View style={styles.seriesHeader}>
-              <View style={styles.seriesHeaderLeft}>
-                <Text style={styles.seriesTitle}>{series.title}</Text>
-                <View style={styles.ratingContainer}>
-                  <Star size={14} color={Colors.warning} fill={Colors.warning} />
-                  <Text style={styles.rating}>{series.rating || 0}</Text>
-                  <Text style={styles.studentsCount}>({series.purchase_count || 0} {t.testSeries.students})</Text>
-                </View>
-              </View>
-              {series.is_purchased && (
-                <View style={styles.purchasedBadge}>
-                  <CheckCircle size={16} color={Colors.success} />
-                  <Text style={styles.purchasedText}>{t.testSeries.purchased}</Text>
-                </View>
-              )}
-            </View>
-
-            {/* Description */}
-            <Text style={styles.seriesDescription}>{series.description}</Text>
-
-            {/* Topics */}
-            <View style={styles.topicsContainer}>
-              {series.topics?.slice(0, 3).map((topic, index) => (
-                <View key={index} style={styles.topicChip}>
-                  <Text style={styles.topicText}>{topic}</Text>
-                </View>
-              )) || (
-                <View style={styles.topicChip}>
-                  <Text style={styles.topicText}>{series.category}</Text>
-                </View>
-              )}
-              {series.topics?.length > 3 && (
-                <Text style={styles.moreTopics}>+{series.topics.length - 3} {t.testSeries.more}</Text>
-              )}
-            </View>
-
-            {/* Stats */}
-            <View style={styles.statsContainer}>
-              <View style={styles.statItem}>
-                <Clock size={16} color={Colors.textSubtle} />
-                <Text style={styles.statText}>{series.duration_months} {t.testSeries.months || 'months'}</Text>
-              </View>
-              <View style={styles.statItem}>
-                <Play size={16} color={Colors.textSubtle} />
-                <Text style={styles.statText}>{series.total_tests} {t.testSeries.tests}</Text>
-              </View>
-              <View style={styles.statItem}>
-                <Gift size={16} color={Colors.textSubtle} />
-                <Text style={styles.statText}>{series.free_tests} {t.testSeries.freeLabel}</Text>
-              </View>
-            </View>
-
-            {/* Price and Action */}
-            <View style={styles.actionContainer}>
-              <View style={styles.priceContainer}>
-                <Text style={styles.price}>₹{series.price}</Text>
-                <Text style={styles.originalPrice}>₹{series.original_price}</Text>
-                <View style={styles.discountBadge}>
-                  <Text style={styles.discountText}>
-                    {Math.round((1 - series.price / series.original_price) * 100)}% {t.testSeries.off}
-                  </Text>
-                </View>
-              </View>
-              
-              <View style={styles.buttonContainer}>
-                {series.free_tests > 0 && (
-                  <TouchableOpacity 
-                    style={styles.freeTestButton}
-                    onPress={() => handleStartTest(series)}
-                  >
-                    <Text style={styles.freeTestText}>{t.testSeries.tryFree}</Text>
-                  </TouchableOpacity>
-                )}
-                
-                {series.is_purchased ? (
-                  <TouchableOpacity 
-                    style={styles.startButton}
-                    onPress={() => handleStartTest(series)}
-                  >
-                    <Text style={styles.startButtonText}>{t.testSeries.startTests}</Text>
-                  </TouchableOpacity>
-                ) : (
-                  <TouchableOpacity 
-                    style={styles.purchaseButton}
-                    onPress={() => handlePurchase(series)}
-                  >
-                    <Lock size={16} color={Colors.white} />
-                    <Text style={styles.purchaseButtonText}>{t.testSeries.purchase}</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            </View>
-            </View>
-          ))
+          testSeries.map((series, index) => renderTestSeriesCard(series, index))
         )}
       </ScrollView>
     </SafeAreaView>
@@ -341,6 +277,17 @@ const getStyles = (Colors: any) => StyleSheet.create({
   },
   filterButton: {
     padding: 8,
+  },
+  backButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: Colors.light,
+    borderRadius: 20,
+  },
+  backButtonText: {
+    color: Colors.primaryLight,
+    fontWeight: '500',
+    fontSize: 14,
   },
   searchContainer: {
     paddingHorizontal: 20,
@@ -393,6 +340,100 @@ const getStyles = (Colors: any) => StyleSheet.create({
     flex: 1,
     paddingHorizontal: 20,
     paddingTop: 16,
+  },
+  categoriesSection: {
+    flex: 1,
+  },
+  testSeriesSection: {
+    flex: 1,
+  },
+  sectionHeader: {
+    marginBottom: 20,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  sectionSubtitle: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  categoryCard: {
+    backgroundColor: Colors.cardBackground,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: Colors.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: Colors.muted,
+  },
+  categoryCardSelected: {
+    borderColor: Colors.primaryLight,
+    borderWidth: 2,
+  },
+  categoryHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  categoryIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  categoryInfo: {
+    flex: 1,
+  },
+  categoryName: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  categoryDescription: {
+    fontSize: 14,
+    lineHeight: 18,
+  },
+  subCategoriesPreview: {
+    borderTopWidth: 1,
+    borderTopColor: Colors.muted,
+    paddingTop: 12,
+  },
+  subCategoriesTitle: {
+    fontSize: 12,
+    fontWeight: '500',
+    marginBottom: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  subCategoriesContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  subCategoryChip: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginRight: 8,
+    marginBottom: 4,
+    maxWidth: 120,
+  },
+  subCategoryText: {
+    fontSize: 11,
+    fontWeight: '500',
+  },
+  moreSubCategories: {
+    fontSize: 11,
+    fontStyle: 'italic',
+    alignSelf: 'center',
+    marginLeft: 4,
   },
   seriesCard: {
     backgroundColor: Colors.cardBackground,
@@ -505,6 +546,11 @@ const getStyles = (Colors: any) => StyleSheet.create({
     fontSize: 20,
     fontWeight: '700',
     color: Colors.textPrimary,
+  },
+  currency: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: Colors.textSubtle,
   },
   originalPrice: {
     fontSize: 14,

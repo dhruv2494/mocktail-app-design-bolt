@@ -3,7 +3,6 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Tabs } from 'expo-router';
 import { Chrome as Home, BookOpen, User, FileText, Play, Bell } from 'lucide-react-native';
-import { AuthGuard } from '@/components/AuthGuard';
 
 export default function TabLayout() {
   const { isDarkMode } = useTheme();
@@ -11,8 +10,7 @@ export default function TabLayout() {
   const Colors = getTheme(isDarkMode);
   
   return (
-    <AuthGuard requireEmailVerification={true}>
-      <Tabs
+    <Tabs
         screenOptions={{
           headerShown: false,
           tabBarActiveTintColor: Colors.textLink,
@@ -36,15 +34,6 @@ export default function TabLayout() {
           }}
         />
         <Tabs.Screen
-          name="free-tests"
-          options={{
-            title: t.navigation.freeTests,
-            tabBarIcon: ({ size, color }) => (
-              <Play size={size} color={color} />
-            ),
-          }}
-        />
-        <Tabs.Screen
           name="test-series"
           options={{
             title: t.navigation.testSeries,
@@ -63,15 +52,6 @@ export default function TabLayout() {
           }}
         />
         <Tabs.Screen
-          name="notifications"
-          options={{
-            title: t.navigation.notifications,
-            tabBarIcon: ({ size, color }) => (
-              <Bell size={size} color={color} />
-            ),
-          }}
-        />
-        <Tabs.Screen
           name="profile"
           options={{
             title: t.navigation.profile,
@@ -80,7 +60,18 @@ export default function TabLayout() {
             ),
           }}
         />
+        <Tabs.Screen
+          name="free-tests"
+          options={{
+            href: null, // Hide from tab bar but keep accessible via direct navigation
+          }}
+        />
+        <Tabs.Screen
+          name="notifications"
+          options={{
+            href: null, // Hide from tab bar but keep accessible via direct navigation
+          }}
+        />
       </Tabs>
-    </AuthGuard>
   );
 }

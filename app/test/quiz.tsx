@@ -9,12 +9,12 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { LanguageSelector } from '@/components/shared';
 import { 
-  useStartQuizMutation,
-  useGetSessionStatusQuery,
+  useStartTestMutation,
+  useGetTestQuestionsQuery,
   useSaveAnswerMutation,
-  usePauseResumeQuizMutation,
-  useSubmitQuizMutation,
-  useValidateQuizSessionQuery,
+  usePauseResumeTestMutation,
+  useSubmitTestMutation,
+  useGetTestByUuidQuery,
   QuizQuestion,
   QuizSession
 } from '@/store/api/quizApi';
@@ -37,75 +37,96 @@ export default function QuizScreen() {
   const { isDarkMode } = useTheme();
   const Colors = getTheme(isDarkMode);
   const { t } = useLanguage();
+  const styles = getStyles(Colors);
   
   // API hooks
-  const [startQuiz, { isLoading: startingQuiz }] = useStartQuizMutation();
+  const [startTest, { isLoading: startingTest }] = useStartTestMutation();
   const [saveAnswer] = useSaveAnswerMutation();
-  const [pauseResumeQuiz] = usePauseResumeQuizMutation();
-  const [submitQuiz, { isLoading: submittingQuiz }] = useSubmitQuizMutation();
+  const [pauseResumeTest] = usePauseResumeTestMutation();
+  const [submitTest, { isLoading: submittingTest }] = useSubmitTestMutation();
   
-  // Validate quiz session on component mount
-  const { data: validationData, isLoading: validatingSession } = useValidateQuizSessionQuery({
-    test_id: testId as string,
-    test_type: testType as string,
-    series_id: seriesId as string,
-  }, {
-    skip: !testId || !testType,
+  // Get test information
+  const { data: testData, isLoading: loadingTest } = useGetTestByUuidQuery(testId as string, {
+    skip: !testId,
+  });
+  
+  // Get test questions (will be fetched after starting test)
+  const { data: questionsData, isLoading: loadingQuestions } = useGetTestQuestionsQuery(testId as string, {
+    skip: !testId || !session,
   });
 
   const availableLanguages = ['English', 'Hindi', 'Kannada', 'Telugu'];
 
-  // Initialize quiz when validation is complete
+  // Initialize test when testData is available
   useEffect(() => {
-    const initializeQuiz = async () => {
-      if (!validationData?.data || !testId || !testType) return;
+    const initializeTest = async () => {
+      if (!testData?.data || !testId) return;
       
-      const validation = validationData.data;
-      
-      // Check if user can start the quiz
-      if (!validation.can_start) {
-        Alert.alert(
-          'Cannot Start Quiz',
-          validation.reason || 'You cannot start this quiz at the moment.',
-          [{ text: 'OK', onPress: () => router.back() }]
-        );
-        return;
-      }
+      setTestInfo(testData.data);
 
-      // Check if there's an existing session to resume
-      if (validation.existing_session) {
-        // Resume existing session
-        setSession(validation.existing_session as any);
-        setTimeRemaining(validation.existing_session.time_remaining);
-        // TODO: Load existing session data
-        return;
-      }
-
-      // Start new quiz session
+      // Start test session
       try {
-        const result = await startQuiz({
-          test_id: testId as string,
-          test_type: testType as string,
-          series_id: seriesId as string,
-          language: selectedLanguage,
+        const result = await startTest({
+          testUuid: testId as string,
+          language: selectedLanguage.toLowerCase(),
         }).unwrap();
 
-        setSession(result.data.session);
-        setQuestions(result.data.questions);
-        setTestInfo(result.data.test_info);
-        setTimeRemaining(result.data.session.duration * 60); // Convert minutes to seconds
-      } catch (error) {
-        console.error('Error starting quiz:', error);
+        // Create session object from response
+        const sessionData = {
+          id: 0, // Will be set by backend
+          uuid: result.data.session_id,
+          user_id: 0,
+          test_id: 0,
+          start_time: result.data.started_at,
+          status: result.data.status as any,
+          time_remaining: result.data.time_remaining,
+          total_time_spent: 0,
+          is_demo: result.data.is_demo,
+          language: selectedLanguage.toLowerCase(),
+          created_at: result.data.started_at,
+          updated_at: result.data.started_at,
+        };
+
+        setSession(sessionData);
+        setTimeRemaining(result.data.time_remaining);
+
+        if (result.data.is_resuming) {
+          // Handle resuming logic here
+          console.log('Resuming existing session');
+        }
+      } catch (error: any) {
+        console.error('Error starting test:', error);
         Alert.alert(
           'Error',
-          'Failed to start the quiz. Please try again.',
+          error?.data?.message || 'Failed to start the test. Please try again.',
           [{ text: 'OK', onPress: () => router.back() }]
         );
       }
     };
 
-    initializeQuiz();
-  }, [validationData, testId, testType, seriesId, selectedLanguage]);
+    initializeTest();
+  }, [testData, testId, selectedLanguage]);
+
+  // Load questions after session is created
+  useEffect(() => {
+    if (questionsData?.data?.questions) {
+      setQuestions(questionsData.data.questions.map(q => ({
+        ...q,
+        options: {
+          A: q.option_a,
+          B: q.option_b,
+          C: q.option_c,
+          D: q.option_d,
+        },
+        options_gujarati: q.option_a_gujarati ? {
+          A: q.option_a_gujarati,
+          B: q.option_b_gujarati,
+          C: q.option_c_gujarati,
+          D: q.option_d_gujarati,
+        } : undefined,
+      })));
+    }
+  }, [questionsData]);
 
   // Timer effect
   useEffect(() => {
@@ -135,7 +156,6 @@ export default function QuizScreen() {
     if (!session || !questions[currentQuestion]) return;
     
     const questionId = questions[currentQuestion].id;
-    const previousAnswer = selectedAnswers[questionId];
     
     // Update local state immediately for better UX
     setSelectedAnswers(prev => ({
@@ -146,12 +166,11 @@ export default function QuizScreen() {
     // Save to backend (auto-save)
     try {
       await saveAnswer({
-        session_id: session.id,
+        session_uuid: session.uuid,
         question_id: questionId,
         selected_option: option,
         time_spent: 0, // TODO: Track actual time spent on question
-        is_flagged: flaggedQuestions.has(questionId),
-        is_auto_save: true,
+        is_flagged: flaggedQuestions.has(questionId.toString()),
       });
     } catch (error) {
       console.error('Error saving answer:', error);
@@ -163,15 +182,15 @@ export default function QuizScreen() {
     if (!session || !questions[currentQuestion]) return;
     
     const questionId = questions[currentQuestion].id;
-    const isFlagged = flaggedQuestions.has(questionId);
+    const isFlagged = flaggedQuestions.has(questionId.toString());
     
     // Update local state
     setFlaggedQuestions(prev => {
       const newSet = new Set(prev);
       if (isFlagged) {
-        newSet.delete(questionId);
+        newSet.delete(questionId.toString());
       } else {
-        newSet.add(questionId);
+        newSet.add(questionId.toString());
       }
       return newSet;
     });
@@ -179,12 +198,11 @@ export default function QuizScreen() {
     // Save flag status to backend
     try {
       await saveAnswer({
-        session_id: session.id,
+        session_uuid: session.uuid,
         question_id: questionId,
         selected_option: selectedAnswers[questionId] || null,
         time_spent: 0,
         is_flagged: !isFlagged,
-        is_auto_save: true,
       });
     } catch (error) {
       console.error('Error saving flag status:', error);
@@ -192,13 +210,12 @@ export default function QuizScreen() {
   };
 
   const handlePauseResume = async () => {
-    if (!session || !session.can_pause) return;
+    if (!session) return;
     
     try {
-      const result = await pauseResumeQuiz({
-        session_id: session.id,
+      const result = await pauseResumeTest({
+        session_uuid: session.uuid,
         action: isPaused ? 'resume' : 'pause',
-        timestamp: new Date().toISOString(),
       }).unwrap();
       
       setIsPaused(result.data.status === 'paused');
@@ -227,26 +244,29 @@ export default function QuizScreen() {
                 question_id: question.id,
                 selected_option: selectedAnswers[question.id] || null,
                 time_spent: 0, // TODO: Track actual time per question
-                is_flagged: flaggedQuestions.has(question.id),
+                is_flagged: flaggedQuestions.has(question.id.toString()),
               }));
 
-              const result = await submitQuiz({
-                session_id: session.id,
+              const result = await submitTest({
+                session_uuid: session.uuid,
                 answers,
                 submitted_at: new Date().toISOString(),
-                time_taken: (session.duration * 60) - timeRemaining,
-                is_manual_submit: true,
+                time_taken: (testInfo?.duration_minutes * 60 || 3600) - timeRemaining,
               }).unwrap();
 
               // Navigate to results with the result data
               router.push({
                 pathname: '/test/results',
                 params: {
-                  resultId: result.data.result_id,
-                  sessionId: session.id,
+                  sessionId: session.uuid,
                   score: result.data.total_score.toString(),
                   percentage: result.data.percentage.toString(),
                   passed: result.data.passed.toString(),
+                  correctAnswers: result.data.correct_answers.toString(),
+                  wrongAnswers: result.data.wrong_answers.toString(),
+                  unanswered: result.data.unanswered.toString(),
+                  testTitle: testInfo?.title || title || 'Quiz',
+                  testId: testId,
                 },
               });
             } catch (error) {
@@ -264,7 +284,7 @@ export default function QuizScreen() {
     
     const questionId = questions[questionIndex].id;
     if (selectedAnswers[questionId] !== undefined) return 'answered';
-    if (flaggedQuestions.has(questionId)) return 'flagged';
+    if (flaggedQuestions.has(questionId.toString())) return 'flagged';
     if (questionIndex === currentQuestion) return 'current';
     return 'unanswered';
   };
@@ -283,7 +303,7 @@ export default function QuizScreen() {
       <View style={[styles.centerContainer]}>
         <ActivityIndicator size="large" color={Colors.primary} />
         <Text style={[styles.loadingText, { color: Colors.textPrimary }]}>
-          {startingQuiz ? 'Starting Quiz...' : validatingSession ? 'Validating Session...' : 'Loading...'}
+          {startingTest ? 'Starting Test...' : loadingTest ? 'Loading Test...' : loadingQuestions ? 'Loading Questions...' : 'Loading...'}
         </Text>
       </View>
     </SafeAreaView>
@@ -362,14 +382,14 @@ export default function QuizScreen() {
     </View>
   );
 
-  // Show loading state while validating or starting quiz
-  if (validatingSession || startingQuiz || !session || questions.length === 0) {
+  // Show loading state while loading test or starting test
+  if (loadingTest || startingTest || loadingQuestions || !session || questions.length === 0) {
     return renderLoadingState();
   }
 
   // Show error state if there's no session or questions after loading
-  if (!session && !validatingSession && !startingQuiz) {
-    return renderErrorState('Failed to start the quiz session.');
+  if (!session && !loadingTest && !startingTest) {
+    return renderErrorState('Failed to start the test session.');
   }
 
   if (questions.length === 0 && session) {
@@ -383,8 +403,6 @@ export default function QuizScreen() {
       </SafeAreaView>
     );
   }
-
-  const styles = getStyles(Colors);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -546,7 +564,7 @@ export default function QuizScreen() {
           <TouchableOpacity
             style={styles.submitButton}
             onPress={handleSubmitTest}
-            disabled={submittingQuiz}
+            disabled={submittingTest}
           >
             <LinearGradient
               colors={[Colors.danger, Colors.danger]}

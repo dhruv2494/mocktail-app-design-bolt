@@ -13,14 +13,17 @@ const { width } = Dimensions.get('window');
 
 export default function TestResultsScreen() {
   const params = useLocalSearchParams();
-  const { resultId, sessionId, score, percentage, passed } = params;
+  const { resultId, sessionId, score, percentage, passed, testTitle, correctAnswers, wrongAnswers, unanswered } = params;
   
   const [activeTab, setActiveTab] = useState<'overview' | 'analysis'>('overview');
   const { isDarkMode } = useTheme();
   const { t } = useLanguage();
   const Colors = getTheme(isDarkMode);
 
-  // Fetch detailed results from API
+  // Use passed parameters directly if available, otherwise fetch from API
+  const hasDirectParams = correctAnswers && wrongAnswers && unanswered;
+  
+  // Fetch detailed results from API only if we don't have direct params
   const { 
     data: reviewData, 
     isLoading: loadingResults,
@@ -29,18 +32,18 @@ export default function TestResultsScreen() {
     session_id: sessionId as string,
     result_id: resultId as string,
   }, {
-    skip: !sessionId || !resultId,
+    skip: !sessionId || !resultId || hasDirectParams,
   });
 
   const results = reviewData?.data;
   const questions = results?.questions || [];
   const resultSummary = results?.result_summary;
 
-  // Calculate metrics from API data
-  const correctAnswers = questions.filter(q => q.is_correct).length;
-  const incorrectAnswers = questions.filter(q => !q.is_correct && q.selected_option !== null).length;
-  const unanswered = questions.filter(q => q.selected_option === null).length;
-  const totalQuestions = questions.length;
+  // Calculate metrics from params or API data
+  const correctCount = hasDirectParams ? parseInt(correctAnswers as string) : questions.filter(q => q.is_correct).length;
+  const incorrectCount = hasDirectParams ? parseInt(wrongAnswers as string) : questions.filter(q => !q.is_correct && q.selected_option !== null).length;
+  const unansweredCount = hasDirectParams ? parseInt(unanswered as string) : questions.filter(q => q.selected_option === null).length;
+  const totalQuestions = correctCount + incorrectCount + unansweredCount;
   const totalTimeTaken = questions.reduce((sum, q) => sum + q.time_spent, 0);
   
   // Group by subject for analysis
@@ -114,8 +117,8 @@ export default function TestResultsScreen() {
     });
   };
 
-  // Show loading state while fetching results
-  if (loadingResults) {
+  // Show loading state while fetching results (only if we don't have direct params)
+  if (loadingResults && !hasDirectParams) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
@@ -128,8 +131,8 @@ export default function TestResultsScreen() {
     );
   }
 
-  // Show error state if results failed to load
-  if (resultsError || !results) {
+  // Show error state if results failed to load (only if we don't have direct params)
+  if ((resultsError || (!results && !hasDirectParams)) && !hasDirectParams) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.errorContainer}>
@@ -161,13 +164,13 @@ export default function TestResultsScreen() {
         style={styles.header}
       >
         <View style={styles.headerContent}>
-          <Text style={styles.headerTitle}>{t.results.testCompleted}</Text>
-          <Text style={styles.headerSubtitle}>{params.title || 'Quiz'}</Text>
+          <Text style={styles.headerTitle}>{t.results?.testCompleted || 'Test Completed'}</Text>
+          <Text style={styles.headerSubtitle}>{testTitle || params.title || 'Quiz'}</Text>
         </View>
         
         <View style={styles.scoreCircle}>
           <Text style={styles.scorePercentage}>{Math.round(Number(percentage) || 0)}%</Text>
-          <Text style={styles.scoreLabel}>{t.results.score}</Text>
+          <Text style={styles.scoreLabel}>{t.results?.score || 'Score'}</Text>
         </View>
       </LinearGradient>
 
@@ -178,7 +181,7 @@ export default function TestResultsScreen() {
           style={styles.performanceGradient}
         >
           <Award size={24} color={Colors.white} />
-          <Text style={styles.performanceText}>{getPerformanceText(Number(percentage) || 0)}</Text>
+          <Text style={styles.performanceText}>{getPerformanceText(Number(percentage) || 0) || 'Good Job!'}</Text>
         </LinearGradient>
       </View>
 
@@ -209,20 +212,20 @@ export default function TestResultsScreen() {
             <View style={styles.statsContainer}>
               <View style={styles.statCard}>
                 <CheckCircle size={24} color={Colors.success} />
-                <Text style={styles.statNumber}>{correctAnswers}</Text>
-                <Text style={styles.statLabel}>{t.results.correct}</Text>
+                <Text style={styles.statNumber}>{correctCount}</Text>
+                <Text style={styles.statLabel}>{t.results?.correct || 'Correct'}</Text>
               </View>
               
               <View style={styles.statCard}>
                 <XCircle size={24} color={Colors.danger} />
-                <Text style={styles.statNumber}>{incorrectAnswers}</Text>
-                <Text style={styles.statLabel}>{t.results.incorrect}</Text>
+                <Text style={styles.statNumber}>{incorrectCount}</Text>
+                <Text style={styles.statLabel}>{t.results?.incorrect || 'Wrong'}</Text>
               </View>
               
               <View style={styles.statCard}>
                 <AlertCircle size={24} color={Colors.warning} />
-                <Text style={styles.statNumber}>{unanswered}</Text>
-                <Text style={styles.statLabel}>{t.results.unanswered}</Text>
+                <Text style={styles.statNumber}>{unansweredCount}</Text>
+                <Text style={styles.statLabel}>{t.results?.unanswered || 'Skipped'}</Text>
               </View>
             </View>
 
@@ -234,21 +237,21 @@ export default function TestResultsScreen() {
                     <CheckCircle size={20} color={Colors.primaryLight} />
                     <Text style={styles.detailLabel}>{t.results.correctAnswers}</Text>
                   </View>
-                  <Text style={styles.detailValue}>{correctAnswers}</Text>
+                  <Text style={styles.detailValue}>{correctCount}</Text>
                 </View>
                 <View style={styles.detailRow}>
                   <View style={styles.detailItem}>
                     <XCircle size={20} color={Colors.accent} />
                     <Text style={styles.detailLabel}>{t.results.incorrectAnswers}</Text>
                   </View>
-                  <Text style={styles.detailValue}>{incorrectAnswers}</Text>
+                  <Text style={styles.detailValue}>{incorrectCount}</Text>
                 </View>
                 <View style={styles.detailRow}>
                   <View style={styles.detailItem}>
                     <AlertCircle size={20} color={Colors.accent} />
                     <Text style={styles.detailLabel}>{t.results.unanswered}</Text>
                   </View>
-                  <Text style={styles.detailValue}>{unanswered}</Text>
+                  <Text style={styles.detailValue}>{unansweredCount}</Text>
                 </View>
                 <View style={styles.detailRow}>
                   <View style={styles.detailItem}>
@@ -269,7 +272,7 @@ export default function TestResultsScreen() {
                     style={[
                       styles.progressSegment, 
                       { 
-                        width: `${(correctAnswers / totalQuestions) * 100}%`,
+                        width: `${(correctCount / totalQuestions) * 100}%`,
                         backgroundColor: Colors.success
                       }
                     ]} 
@@ -278,7 +281,7 @@ export default function TestResultsScreen() {
                     style={[
                       styles.progressSegment, 
                       { 
-                        width: `${(incorrectAnswers / totalQuestions) * 100}%`,
+                        width: `${(incorrectCount / totalQuestions) * 100}%`,
                         backgroundColor: Colors.danger
                       }
                     ]} 
@@ -287,7 +290,7 @@ export default function TestResultsScreen() {
                     style={[
                       styles.progressSegment, 
                       { 
-                        width: `${(unanswered / totalQuestions) * 100}%`,
+                        width: `${(unansweredCount / totalQuestions) * 100}%`,
                         backgroundColor: Colors.warning
                       }
                     ]} 
@@ -297,15 +300,15 @@ export default function TestResultsScreen() {
                 <View style={styles.chartLegend}>
                   <View style={styles.legendItem}>
                     <View style={[styles.legendDot, { backgroundColor: Colors.success }]} />
-                    <Text style={styles.legendText}>{t.results.correct} ({correctAnswers})</Text>
+                    <Text style={styles.legendText}>{t.results?.correct || 'Correct'} ({correctCount})</Text>
                   </View>
                   <View style={styles.legendItem}>
                     <View style={[styles.legendDot, { backgroundColor: Colors.danger }]} />
-                    <Text style={styles.legendText}>{t.results.incorrect} ({incorrectAnswers})</Text>
+                    <Text style={styles.legendText}>{t.results?.incorrect || 'Wrong'} ({incorrectCount})</Text>
                   </View>
                   <View style={styles.legendItem}>
                     <View style={[styles.legendDot, { backgroundColor: Colors.warning }]} />
-                    <Text style={styles.legendText}>{t.results.unanswered} ({unanswered})</Text>
+                    <Text style={styles.legendText}>{t.results?.unanswered || 'Unanswered'} ({unansweredCount})</Text>
                   </View>
                 </View>
               </View>

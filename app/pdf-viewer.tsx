@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, Download, Share2, BookOpen } from 'lucide-react-native';
+import { ArrowLeft, BookOpen, ZoomIn, ZoomOut } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { getTheme } from '@/theme';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { useGetPDFByIdQuery, useGetPDFDownloadUrlMutation } from '@/store/api/pdfApi';
+import { useGetPDFByIdQuery } from '@/store/api/pdfApi';
 import { SkeletonLoader } from '@/components/shared/SkeletonLoader';
+import { API_CONFIG } from '@/config/constants';
+import Pdf from 'react-native-pdf';
 
 export default function PDFViewerScreen() {
   const { pdfId } = useLocalSearchParams<{ pdfId: string }>();
@@ -24,41 +26,17 @@ export default function PDFViewerScreen() {
     skip: !pdfId,
   });
 
-  const [getPDFDownloadUrl, { isLoading: isDownloading }] = useGetPDFDownloadUrlMutation();
-
   const pdf = pdfResponse?.data;
+  const [scale, setScale] = useState(1.0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
 
-  const handleDownload = async () => {
-    if (!pdf) return;
-
-    try {
-      const response = await getPDFDownloadUrl(pdf.id).unwrap();
-      
-      Alert.alert(
-        'Download Ready',
-        `PDF: ${response.data.filename}\nSize: ${(response.data.size / 1024 / 1024).toFixed(2)} MB`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { 
-            text: 'Download', 
-            onPress: () => {
-              // Here you would implement actual file download using expo-file-system
-              console.log('Download URL:', response.data.download_url);
-            }
-          }
-        ]
-      );
-    } catch (error: any) {
-      Alert.alert(
-        'Download Error',
-        error?.data?.message || 'Failed to get download URL'
-      );
-    }
+  const handleZoomIn = () => {
+    setScale(prev => Math.min(prev + 0.2, 3.0));
   };
 
-  const handleShare = () => {
-    // Implement sharing functionality
-    Alert.alert('Share', 'Sharing functionality will be implemented here');
+  const handleZoomOut = () => {
+    setScale(prev => Math.max(prev - 0.2, 0.5));
   };
 
   const formatFileSize = (bytes: number) => {
@@ -157,22 +135,20 @@ export default function PDFViewerScreen() {
           {pdf.title}
         </Text>
         <View style={styles.headerActions}>
+          <Text style={styles.pageCounter}>
+            {currentPage}/{totalPages}
+          </Text>
           <TouchableOpacity 
             style={styles.actionButton}
-            onPress={handleShare}
+            onPress={handleZoomOut}
           >
-            <Share2 size={20} color={Colors.textPrimary} />
+            <ZoomOut size={20} color={Colors.textPrimary} />
           </TouchableOpacity>
           <TouchableOpacity 
             style={styles.actionButton}
-            onPress={handleDownload}
-            disabled={isDownloading}
+            onPress={handleZoomIn}
           >
-            {isDownloading ? (
-              <ActivityIndicator size="small" color={Colors.textPrimary} />
-            ) : (
-              <Download size={20} color={Colors.textPrimary} />
-            )}
+            <ZoomIn size={20} color={Colors.textPrimary} />
           </TouchableOpacity>
         </View>
       </View>
@@ -199,27 +175,44 @@ export default function PDFViewerScreen() {
 
         {/* PDF Viewer Container */}
         <View style={styles.viewerContainer}>
-          <View style={styles.comingSoonContainer}>
-            <BookOpen size={64} color={Colors.primaryLight} />
-            <Text style={styles.comingSoonTitle}>PDF Viewer</Text>
-            <Text style={styles.comingSoonDescription}>
-              PDF viewing functionality will be integrated here using a library like react-native-pdf or expo-document-picker.
-            </Text>
-            <TouchableOpacity 
-              style={styles.downloadButton}
-              onPress={handleDownload}
-              disabled={isDownloading}
-            >
-              {isDownloading ? (
-                <ActivityIndicator size="small" color={Colors.white} />
-              ) : (
-                <Download size={16} color={Colors.white} />
-              )}
-              <Text style={styles.downloadButtonText}>
-                {isDownloading ? 'Downloading...' : 'Download PDF'}
-              </Text>
-            </TouchableOpacity>
-          </View>
+          <Pdf
+            source={{
+              uri: `${API_CONFIG.BASE_URL}/api/pdfs/${pdf.id}/view`,
+              cache: true,
+            }}
+            onLoadComplete={(numberOfPages) => {
+              console.log(`PDF loaded with ${numberOfPages} pages`);
+              setTotalPages(numberOfPages);
+            }}
+            onPageChanged={(page) => {
+              console.log(`Current page: ${page}`);
+              setCurrentPage(page);
+            }}
+            onError={(error) => {
+              console.error('PDF loading error:', error);
+              Alert.alert('Error', 'Failed to load PDF');
+            }}
+            onPressLink={(uri) => {
+              console.log(`Link pressed: ${uri}`);
+            }}
+            style={styles.pdf}
+            scale={scale}
+            minScale={0.5}
+            maxScale={3.0}
+            enablePaging={true}
+            enableRTL={false}
+            enableAnnotationRendering={true}
+            enableAntialiasing={true}
+            spacing={10}
+            fitWidth={true}
+            fitPolicy={0}
+            activityIndicator={
+              <ActivityIndicator size="large" color={Colors.primaryLight} />
+            }
+            activityIndicatorProps={{
+              color: Colors.primaryLight,
+            }}
+          />
         </View>
       </View>
     </SafeAreaView>
@@ -254,6 +247,12 @@ const getStyles = (Colors: any) => StyleSheet.create({
   headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  pageCounter: {
+    fontSize: 14,
+    color: Colors.textSubtle,
+    marginRight: 12,
+    fontWeight: '500',
   },
   actionButton: {
     padding: 8,
@@ -300,6 +299,12 @@ const getStyles = (Colors: any) => StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background,
   },
+  pdf: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+    backgroundColor: Colors.background,
+  },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -309,41 +314,6 @@ const getStyles = (Colors: any) => StyleSheet.create({
     fontSize: 16,
     color: Colors.textSubtle,
     marginTop: 16,
-  },
-  comingSoonContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 40,
-  },
-  comingSoonTitle: {
-    fontSize: 24,
-    fontWeight: '600',
-    color: Colors.textPrimary,
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  comingSoonDescription: {
-    fontSize: 14,
-    color: Colors.textSubtle,
-    textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: 32,
-  },
-  downloadButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: Colors.primaryLight,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  downloadButtonText: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: Colors.white,
-    marginLeft: 8,
   },
   errorContainer: {
     flex: 1,
