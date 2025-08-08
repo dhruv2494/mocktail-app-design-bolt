@@ -1,17 +1,30 @@
-import * as Device from 'expo-device';
-import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_CONFIG, AUTH_CONFIG } from '@/config/constants';
 
+// Conditional imports for expo-notifications
+let Device: any = null;
+let Notifications: any = null;
+
+try {
+  if (Platform.OS !== 'web') {
+    Device = require('expo-device');
+    Notifications = require('expo-notifications');
+  }
+} catch (error) {
+  console.warn('Expo notifications not available, notifications will be disabled:', error);
+}
+
 // Configure how notifications are handled when the app is in the foreground
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-  }),
-});
+if (Notifications) {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: true,
+    }),
+  });
+}
 
 export interface NotificationData {
   id: string;
@@ -48,6 +61,13 @@ class NotificationService {
     try {
       if (this.isInitialized) {
         console.log('📋 Notification service already initialized');
+        return true;
+      }
+
+      // Check if notifications are available
+      if (!Notifications || !Device) {
+        console.log('📵 Expo notifications not available on this platform, marking as initialized');
+        this.isInitialized = true;
         return true;
       }
 
@@ -97,6 +117,11 @@ class NotificationService {
    */
   async requestPermissions(): Promise<boolean> {
     try {
+      if (!Notifications || !Device) {
+        console.log('Notifications not available on this platform');
+        return false;
+      }
+
       if (Device.isDevice) {
         const { status: existingStatus } = await Notifications.getPermissionsAsync();
         let finalStatus = existingStatus;
@@ -140,6 +165,8 @@ class NotificationService {
    * Create Android notification channels
    */
   private async createNotificationChannels() {
+    if (!Notifications) return;
+    
     const channels = [
       {
         id: 'quiz_reminders',
@@ -189,6 +216,11 @@ class NotificationService {
    */
   async registerForPushNotifications(): Promise<string | null> {
     try {
+      if (!Notifications || !Device) {
+        console.log('Notifications not available on this platform');
+        return null;
+      }
+
       if (!Device.isDevice) {
         console.warn('Must use physical device for push notifications');
         return null;
@@ -223,6 +255,11 @@ class NotificationService {
    * Set up notification listeners
    */
   private setupNotificationListeners() {
+    if (!Notifications) {
+      console.log('Notifications not available, skipping listener setup');
+      return;
+    }
+
     // Notification received while app is in foreground
     Notifications.addNotificationReceivedListener((notification) => {
       console.log('📬 Notification received:', notification);
@@ -239,7 +276,7 @@ class NotificationService {
   /**
    * Handle notification received while app is in foreground
    */
-  private handleNotificationReceived(notification: Notifications.Notification) {
+  private handleNotificationReceived(notification: any) {
     const { request } = notification;
     const { content, identifier } = request;
 
@@ -256,7 +293,7 @@ class NotificationService {
   /**
    * Handle notification tapped
    */
-  private handleNotificationTapped(response: Notifications.NotificationResponse) {
+  private handleNotificationTapped(response: any) {
     const { notification } = response;
     const { data } = notification.request.content;
 
@@ -300,6 +337,12 @@ class NotificationService {
    */
   async sendLocalNotification(notificationData: NotificationData): Promise<boolean> {
     try {
+      if (!Notifications) {
+        console.log('Notifications not available, storing notification data locally');
+        await this.storeNotificationLocally(notificationData);
+        return true;
+      }
+
       const preferences = await this.getNotificationPreferences();
       
       // Check if this type of notification is enabled
@@ -341,6 +384,11 @@ class NotificationService {
     scheduledDate: Date
   ): Promise<string | null> {
     try {
+      if (!Notifications) {
+        console.log('Notifications not available, cannot schedule notification');
+        return null;
+      }
+
       const notificationId = await Notifications.scheduleNotificationAsync({
         content: {
           title: notificationData.title,
@@ -365,6 +413,11 @@ class NotificationService {
    */
   async cancelNotification(notificationId: string): Promise<boolean> {
     try {
+      if (!Notifications) {
+        console.log('Notifications not available, cannot cancel notification');
+        return false;
+      }
+
       await Notifications.cancelScheduledNotificationAsync(notificationId);
       console.log('❌ Notification cancelled:', notificationId);
       return true;
@@ -377,8 +430,13 @@ class NotificationService {
   /**
    * Get all scheduled notifications
    */
-  async getScheduledNotifications(): Promise<Notifications.NotificationRequest[]> {
+  async getScheduledNotifications(): Promise<any[]> {
     try {
+      if (!Notifications) {
+        console.log('Notifications not available, returning empty array');
+        return [];
+      }
+
       return await Notifications.getAllScheduledNotificationsAsync();
     } catch (error) {
       console.error('Error getting scheduled notifications:', error);
@@ -600,7 +658,9 @@ class NotificationService {
   /**
    * Map priority to Android priority
    */
-  private mapPriorityToAndroid(priority?: string): Notifications.AndroidNotificationPriority {
+  private mapPriorityToAndroid(priority?: string): any {
+    if (!Notifications) return 'default';
+    
     switch (priority) {
       case 'high':
         return Notifications.AndroidNotificationPriority.HIGH;

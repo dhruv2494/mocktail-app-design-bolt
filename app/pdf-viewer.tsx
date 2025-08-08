@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert, Dimensions, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, BookOpen, ZoomIn, ZoomOut } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -9,7 +9,20 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { useGetPDFByIdQuery } from '@/store/api/pdfApi';
 import { SkeletonLoader } from '@/components/shared/SkeletonLoader';
 import { API_CONFIG } from '@/config/constants';
-import Pdf from 'react-native-pdf';
+
+// Conditional PDF import - use web fallback for web platform
+let Pdf: any;
+
+try {
+  if (Platform.OS === 'web') {
+    Pdf = require('@/src/utils/pdf-web-fallback.js').default;
+  } else {
+    Pdf = require('react-native-pdf').default;
+  }
+} catch (error) {
+  console.warn('PDF library not available, using fallback:', error);
+  Pdf = require('@/src/utils/pdf-web-fallback.js').default;
+}
 
 export default function PDFViewerScreen() {
   const { pdfId } = useLocalSearchParams<{ pdfId: string }>();

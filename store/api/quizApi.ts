@@ -198,15 +198,29 @@ export const quizApi = createApi({
     baseUrl: BASE_URL,
     prepareHeaders: async (headers, { getState }) => {
       const authState = (getState() as RootState).auth;
-      const token = authState.token;
+      let token = authState.token;
+      
+      // If no token in Redux, try to get it from AsyncStorage as fallback
+      if (!token) {
+        try {
+          const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+          const { AUTH_CONFIG } = require('@/config/constants');
+          token = await AsyncStorage.getItem(AUTH_CONFIG.TOKEN_KEY);
+          console.log('🔍 Frontend Auth Debug - Token from AsyncStorage fallback:', !!token);
+        } catch (error) {
+          console.error('Error getting token from AsyncStorage:', error);
+        }
+      }
+      
       console.log('🔍 Frontend Auth Debug - Token exists:', !!token);
       console.log('🔍 Frontend Auth Debug - Is authenticated:', authState.isAuthenticated);
       console.log('🔍 Frontend Auth Debug - User:', authState.user?.email || 'No user');
+      
       if (token) {
         console.log('🔍 Frontend Auth Debug - Setting Authorization header');
         headers.set('authorization', `Bearer ${token}`);
       } else {
-        console.log('❌ Frontend Auth Debug - No token found in Redux state');
+        console.log('❌ Frontend Auth Debug - No token found in Redux state or AsyncStorage');
       }
       headers.set('content-type', 'application/json');
       // Add ngrok bypass header if using ngrok

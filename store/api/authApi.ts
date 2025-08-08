@@ -65,7 +65,17 @@ export const authApi = createApi({
   baseQuery: fetchBaseQuery({
     baseUrl: BASE_URL,
     prepareHeaders: async (headers, { getState }) => {
-      const token = (getState() as RootState).auth.token;
+      let token = (getState() as RootState).auth.token;
+      
+      // If no token in Redux, try to get it from AsyncStorage as fallback
+      if (!token) {
+        try {
+          token = await AsyncStorage.getItem(AUTH_CONFIG.TOKEN_KEY);
+        } catch (error) {
+          console.error('Error getting token from AsyncStorage:', error);
+        }
+      }
+      
       if (token) {
         headers.set('authorization', `Bearer ${token}`);
       }

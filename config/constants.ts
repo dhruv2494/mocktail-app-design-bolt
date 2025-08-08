@@ -1,6 +1,6 @@
 // API Configuration
 export const API_CONFIG = {
-  BASE_URL:  'http://localhost:3000',
+  BASE_URL:  'http://localhost:5004',
   ENDPOINTS: {
     AUTH: {
       REGISTER: '/api/users/register',
