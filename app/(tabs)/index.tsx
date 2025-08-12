@@ -2,16 +2,19 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Bell, Search, Play, Clock, Users, Award, BookOpen, FileText } from 'lucide-react-native';
+import { Bell, Search, Play, Clock, Users, Award, BookOpen, FileText, User } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { getTheme } from '@/theme';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useGetProfileQuery } from '@/store/api/userApi';
 
 export default function HomeScreen() {
   const { isDarkMode } = useTheme();
   const Colors = getTheme(isDarkMode);
   const { t } = useLanguage();
+  const { data: profileData } = useGetProfileQuery();
+  const userProfile = profileData?.data;
   
   const quickActions = [
     { id: 1, title: t.freeTests.title, icon: Play, color: Colors.success, route: '/free-tests' },
@@ -34,13 +37,21 @@ export default function HomeScreen() {
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.headerLeft}>
-            <Image 
-              source={{ uri: 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&dpr=2' }}
-              style={styles.avatar}
-            />
+            {userProfile?.avatarUrl ? (
+              <Image 
+                source={{ uri: userProfile.avatarUrl }}
+                style={styles.avatar}
+              />
+            ) : (
+              <View style={[styles.avatar, styles.avatarPlaceholder]}>
+                <User size={24} color={Colors.white} />
+              </View>
+            )}
             <View>
               <Text style={styles.greeting}>{t.home.goodMorning}</Text>
-              <Text style={styles.userName}>John Doe</Text>
+              <Text style={styles.userName}>
+                {userProfile?.fullName || userProfile?.username || 'Student'}
+              </Text>
             </View>
           </View>
           <View style={styles.headerRight}>
@@ -60,7 +71,7 @@ export default function HomeScreen() {
             style={styles.statCard}
           >
             <Award size={32} color="#FFFFFF" />
-            <Text style={styles.statNumber}>1,247</Text>
+            <Text style={styles.statNumber}>{userProfile?.stats?.totalScore || 0}</Text>
             <Text style={styles.statLabel}>{t.home.totalScore}</Text>
           </LinearGradient>
           
@@ -69,7 +80,7 @@ export default function HomeScreen() {
             style={styles.statCard}
           >
             <Users size={32} color="#FFFFFF" />
-            <Text style={styles.statNumber}>15th</Text>
+            <Text style={styles.statNumber}>#{userProfile?.stats?.rank || '--'}</Text>
             <Text style={styles.statLabel}>{t.home.rank}</Text>
           </LinearGradient>
         </View>
@@ -175,6 +186,11 @@ const getStyles = (Colors: any) => StyleSheet.create({
     height: 48,
     borderRadius: 24,
     marginRight: 12,
+  },
+  avatarPlaceholder: {
+    backgroundColor: Colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   greeting: {
     fontSize: 14,

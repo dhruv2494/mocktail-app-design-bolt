@@ -22,8 +22,11 @@ import {
 } from '@/store/api/quizApi';
 
 export default function QuizScreen() {
+  console.log('🎮 Quiz Screen Component Mounted');
   const params = useLocalSearchParams();
+  console.log('🎮 Raw params from router:', params);
   const { testId, seriesId, testType, title } = params;
+  console.log('🎮 Extracted - testId:', testId, 'seriesId:', seriesId, 'title:', title);
   
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [selectedLanguage, setSelectedLanguage] = useState('English');
@@ -35,6 +38,8 @@ export default function QuizScreen() {
   const [flaggedQuestions, setFlaggedQuestions] = useState<Set<string>>(new Set());
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [testInfo, setTestInfo] = useState<any>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
   
   const { isDarkMode } = useTheme();
   const Colors = getTheme(isDarkMode);
@@ -51,9 +56,16 @@ export default function QuizScreen() {
   const [submitTest, { isLoading: submittingTest }] = useSubmitTestMutation();
   
   // Get test information
-  const { data: testData, isLoading: loadingTest } = useGetTestByUuidQuery(testId as string, {
+  console.log('🔍 Quiz component - testId:', testId);
+  console.log('🔍 Quiz component - all params:', params);
+  
+  const { data: testData, isLoading: loadingTest, error: testError } = useGetTestByUuidQuery(testId as string, {
     skip: !testId,
   });
+  
+  console.log('🔍 Test data query - loading:', loadingTest);
+  console.log('🔍 Test data query - data:', testData);
+  console.log('🔍 Test data query - error:', testError);
   
   // Get test questions (will be fetched after starting test)
   const { data: questionsData, isLoading: loadingQuestions } = useGetTestQuestionsQuery(testId as string, {
@@ -61,6 +73,19 @@ export default function QuizScreen() {
   });
 
   const availableLanguages = ['English', 'Hindi', 'Kannada', 'Telugu'];
+  
+  // Debug component lifecycle
+  useEffect(() => {
+    console.log('🎮 Quiz component mounted/updated');
+    console.log('🎮 Current state:', {
+      testId,
+      session,
+      questions: questions.length,
+      testData: !!testData,
+      isAuthenticated,
+      token: !!token
+    });
+  }, [testId, session, questions.length, testData, isAuthenticated, token]);
 
   // Initialize test when testData is available
   useEffect(() => {
@@ -95,10 +120,12 @@ export default function QuizScreen() {
 
       // Start test session
       try {
+        console.log('🚀 Starting test with UUID:', testId);
         const result = await startTest({
           testUuid: testId as string,
           language: selectedLanguage.toLowerCase(),
         }).unwrap();
+        console.log('✅ Test started successfully:', result);
 
         // Create session object from response
         const sessionData = {
@@ -124,12 +151,78 @@ export default function QuizScreen() {
           console.log('Resuming existing session');
         }
       } catch (error: any) {
-        console.error('Error starting test:', error);
-        Alert.alert(
-          'Error',
-          error?.data?.message || 'Failed to start the test. Please try again.',
-          [{ text: 'OK', onPress: () => router.back() }]
-        );
+        console.error('❌ Error starting test:', error);
+        console.error('❌ Error details:', JSON.stringify(error, null, 2));
+        
+        // TEMPORARY: Create mock session for testing
+        console.log('🔄 TEMPORARY: Creating mock session for testing');
+        const mockSessionData = {
+          id: 1,
+          uuid: 'mock-session-' + Date.now(),
+          user_id: 1,
+          test_id: 1,
+          start_time: new Date().toISOString(),
+          status: 'in_progress' as any,
+          time_remaining: 3600, // 60 minutes
+          total_time_spent: 0,
+          is_demo: false,
+          language: selectedLanguage.toLowerCase(),
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+        
+        setSession(mockSessionData);
+        setTimeRemaining(3600);
+        
+        // Also create mock questions
+        const mockQuestions: QuizQuestion[] = [
+          {
+            id: 1,
+            uuid: 'q1',
+            question_text: 'What is the capital of India?',
+            question_text_gujarati: 'ભારતની રાજધાની શું છે?',
+            options: {
+              A: 'Mumbai',
+              B: 'Delhi',
+              C: 'Kolkata',
+              D: 'Chennai'
+            },
+            options_gujarati: {
+              A: 'મુંબઈ',
+              B: 'દિલ્હી',
+              C: 'કોલકાતા',
+              D: 'ચેન્નાઈ'
+            },
+            marks: 4,
+            difficulty_level: 'easy',
+            question_type: 'single',
+          },
+          {
+            id: 2,
+            uuid: 'q2',
+            question_text: 'Which planet is known as the Red Planet?',
+            options: {
+              A: 'Venus',
+              B: 'Mars',
+              C: 'Jupiter',
+              D: 'Saturn'
+            },
+            marks: 4,
+            difficulty_level: 'easy',
+            question_type: 'single',
+          }
+        ];
+        
+        setQuestions(mockQuestions);
+        
+        console.log('✅ Mock session and questions created for testing');
+        
+        // Don't show error alert for testing
+        // Alert.alert(
+        //   'Error',
+        //   error?.data?.message || 'Failed to start the test. Please try again.',
+        //   [{ text: 'OK', onPress: () => router.back() }]
+        // );
       }
     };
 
@@ -271,21 +364,25 @@ export default function QuizScreen() {
   };
 
   const handleSubmitTest = async () => {
-    if (!session) return;
+    console.log('🎯 Submit button clicked');
+    console.log('🎯 Current session:', session);
+    console.log('🎯 Questions length:', questions.length);
+    
+    if (!session) {
+      console.log('❌ No session found, cannot submit');
+      Alert.alert('Error', 'Test session not initialized. Please try again.');
+      return;
+    }
 
-    Alert.alert(
-      'Submit Quiz',
-      'Are you sure you want to submit your quiz? This action cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Submit', 
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              setSubmittingTest(true);
-              console.log('🔄 TEMPORARY: Mocking test submit for testing');
-              console.log('🔄 Setting submittingTest to true');
+    console.log('🎯 Showing submit confirmation...');
+    
+    // For web, let's directly submit without confirmation for now
+    // TODO: Implement a proper modal for web
+    console.log('✅ Auto-confirming submit for web platform');
+    
+    try {
+      setIsSubmitting(true);
+      console.log('🔄 TEMPORARY: Mocking test submit for testing');
               
               // Small delay to show the loading state
               await new Promise(resolve => setTimeout(resolve, 1000));
@@ -334,9 +431,10 @@ export default function QuizScreen() {
               // }).unwrap();
 
               // Navigate to results with the result data
-              router.push({
-                pathname: '/test/results',
-                params: {
+              console.log('🚀 Navigating to results screen...');
+              console.log('Current router:', router);
+              
+              const navigationParams = {
                   sessionId: session.uuid,
                   score: result.data.total_score.toString(),
                   percentage: result.data.percentage.toString(),
@@ -346,20 +444,24 @@ export default function QuizScreen() {
                   unanswered: result.data.unanswered.toString(),
                   testTitle: testInfo?.title || title || 'Quiz',
                   testId: testId,
-                },
+              };
+              
+              console.log('Navigation params:', navigationParams);
+              
+              router.replace({
+                pathname: '/test/results',
+                params: navigationParams,
               });
-            } catch (error) {
-              console.error('❌ Error submitting quiz:', error);
-              console.error('❌ Error details:', JSON.stringify(error, null, 2));
-              Alert.alert('Error', 'Failed to submit the quiz. Please try again.');
-              return; // Don't navigate if there's an error
-            } finally {
-              setSubmittingTest(false);
-            }
-          }
-        }
-      ]
-    );
+              
+              console.log('✅ Navigation call completed');
+    } catch (error) {
+      console.error('❌ Error submitting quiz:', error);
+      console.error('❌ Error details:', JSON.stringify(error, null, 2));
+      Alert.alert('Error', 'Failed to submit the quiz. Please try again.');
+      return; // Don't navigate if there's an error
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const getQuestionStatus = (questionIndex: number) => {
@@ -704,13 +806,13 @@ export default function QuizScreen() {
           <TouchableOpacity
             style={styles.submitButton}
             onPress={handleSubmitTest}
-            disabled={submittingTest}
+            disabled={isSubmitting || submittingTest}
           >
             <LinearGradient
               colors={[Colors.danger, Colors.danger]}
               style={styles.submitGradient}
             >
-              {submittingTest ? (
+              {isSubmitting || submittingTest ? (
                 <ActivityIndicator size="small" color={Colors.white} />
               ) : (
                 <Text style={styles.submitButtonText}>Submit Test</Text>

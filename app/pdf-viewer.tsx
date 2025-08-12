@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert, Dimensions, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, BookOpen, ZoomIn, ZoomOut } from 'lucide-react-native';
+import { ArrowLeft, BookOpen, Shield } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { getTheme } from '@/theme';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -9,20 +9,8 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { useGetPDFByIdQuery } from '@/store/api/pdfApi';
 import { SkeletonLoader } from '@/components/shared/SkeletonLoader';
 import { API_CONFIG } from '@/config/constants';
-
-// Conditional PDF import - use web fallback for web platform
-let Pdf: any;
-
-try {
-  if (Platform.OS === 'web') {
-    Pdf = require('@/src/utils/pdf-web-fallback.js').default;
-  } else {
-    Pdf = require('react-native-pdf').default;
-  }
-} catch (error) {
-  console.warn('PDF library not available, using fallback:', error);
-  Pdf = require('@/src/utils/pdf-web-fallback.js').default;
-}
+import SecureBase64PDFViewer from '@/components/SecureBase64PDFViewer';
+import * as ScreenCapture from 'expo-screen-capture';
 
 export default function PDFViewerScreen() {
   const { pdfId } = useLocalSearchParams<{ pdfId: string }>();
@@ -40,17 +28,33 @@ export default function PDFViewerScreen() {
   });
 
   const pdf = pdfResponse?.data;
-  const [scale, setScale] = useState(1.0);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
+  const [isSecure, setIsSecure] = useState(true);
 
-  const handleZoomIn = () => {
-    setScale(prev => Math.min(prev + 0.2, 3.0));
-  };
+  useEffect(() => {
+    // Enable screenshot prevention when screen is mounted
+    const activateScreenshotPrevention = async () => {
+      if (Platform.OS !== 'web') {
+        try {
+          await ScreenCapture.preventScreenCaptureAsync();
+          setIsSecure(true);
+        } catch (error) {
+          console.error('Failed to prevent screenshots:', error);
+          setIsSecure(false);
+        }
+      }
+    };
 
-  const handleZoomOut = () => {
-    setScale(prev => Math.max(prev - 0.2, 0.5));
-  };
+    activateScreenshotPrevention();
+
+    // Cleanup: Re-enable screenshots when leaving the screen
+    return () => {
+      if (Platform.OS !== 'web') {
+        ScreenCapture.allowScreenCaptureAsync().catch(console.error);
+      }
+    };
+  }, []);
 
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return '0 Bytes';
@@ -148,21 +152,17 @@ export default function PDFViewerScreen() {
           {pdf.title}
         </Text>
         <View style={styles.headerActions}>
-          <Text style={styles.pageCounter}>
-            {currentPage}/{totalPages}
-          </Text>
-          <TouchableOpacity 
-            style={styles.actionButton}
-            onPress={handleZoomOut}
-          >
-            <ZoomOut size={20} color={Colors.textPrimary} />
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.actionButton}
-            onPress={handleZoomIn}
-          >
-            <ZoomIn size={20} color={Colors.textPrimary} />
-          </TouchableOpacity>
+          {isSecure && (
+            <View style={styles.securityBadge}>
+              <Shield size={16} color={Colors.success} />
+              <Text style={styles.securityText}>Secure</Text>
+            </View>
+          )}
+          {totalPages > 0 && (
+            <Text style={styles.pageCounter}>
+              {currentPage}/{totalPages}
+            </Text>
+          )}
         </View>
       </View>
 
@@ -188,42 +188,16 @@ export default function PDFViewerScreen() {
 
         {/* PDF Viewer Container */}
         <View style={styles.viewerContainer}>
-          <Pdf
-            source={{
-              uri: `${API_CONFIG.BASE_URL}/api/pdfs/${pdf.id}/view`,
-              cache: true,
-            }}
+          <SecureBase64PDFViewer
+            pdfId={pdf.id}
+            style={styles.pdf}
             onLoadComplete={(numberOfPages) => {
               console.log(`PDF loaded with ${numberOfPages} pages`);
               setTotalPages(numberOfPages);
             }}
-            onPageChanged={(page) => {
-              console.log(`Current page: ${page}`);
-              setCurrentPage(page);
-            }}
             onError={(error) => {
               console.error('PDF loading error:', error);
-              Alert.alert('Error', 'Failed to load PDF');
-            }}
-            onPressLink={(uri) => {
-              console.log(`Link pressed: ${uri}`);
-            }}
-            style={styles.pdf}
-            scale={scale}
-            minScale={0.5}
-            maxScale={3.0}
-            enablePaging={true}
-            enableRTL={false}
-            enableAnnotationRendering={true}
-            enableAntialiasing={true}
-            spacing={10}
-            fitWidth={true}
-            fitPolicy={0}
-            activityIndicator={
-              <ActivityIndicator size="large" color={Colors.primaryLight} />
-            }
-            activityIndicatorProps={{
-              color: Colors.primaryLight,
+              Alert.alert('Error', 'Failed to load PDF. Please try again.');
             }}
           />
         </View>
@@ -261,10 +235,24 @@ const getStyles = (Colors: any) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
+  securityBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.successLight,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginRight: 12,
+  },
+  securityText: {
+    fontSize: 12,
+    color: Colors.success,
+    fontWeight: '600',
+    marginLeft: 4,
+  },
   pageCounter: {
     fontSize: 14,
     color: Colors.textSubtle,
-    marginRight: 12,
     fontWeight: '500',
   },
   actionButton: {
@@ -358,5 +346,9 @@ const getStyles = (Colors: any) => StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
     color: Colors.white,
+  },
+  customLoadingContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

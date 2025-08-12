@@ -168,7 +168,6 @@ export interface GetSessionStatusResponse {
 
 export interface ReviewAnswersRequest {
   session_id: string;
-  result_id: string;
 }
 
 export interface ReviewAnswersResponse {
@@ -318,12 +317,12 @@ export const quizApi = createApi({
 
     // Get detailed review of answers (after submission)
     reviewAnswers: builder.query<ReviewAnswersResponse, ReviewAnswersRequest>({
-      query: ({ session_id, result_id }) => ({
-        url: `/quiz/review/${session_id}/${result_id}`,
+      query: ({ session_id }) => ({
+        url: `/test-sessions/${session_id}/review`,
         method: 'GET',
       }),
-      providesTags: (result, error, { session_id, result_id }) => [
-        { type: 'QuizResult', id: result_id },
+      providesTags: (result, error, { session_id }) => [
+        { type: 'QuizResult', id: session_id },
         { type: 'QuizSession', id: session_id },
       ],
     }),

@@ -12,13 +12,29 @@ import { useReviewAnswersQuery } from '@/store/api/quizApi';
 const { width } = Dimensions.get('window');
 
 export default function TestResultsScreen() {
+  console.log('📊 Results screen mounted');
   const params = useLocalSearchParams();
+  console.log('📊 Received params:', params);
   const { resultId, sessionId, score, percentage, passed, testTitle, correctAnswers, wrongAnswers, unanswered } = params;
   
   const [activeTab, setActiveTab] = useState<'overview' | 'analysis'>('overview');
   const { isDarkMode } = useTheme();
   const { t } = useLanguage();
   const Colors = getTheme(isDarkMode);
+  const styles = getStyles(Colors);
+  
+  // Early return if no params
+  if (!params || Object.keys(params).length === 0) {
+    console.log('⚠️ No params received in results screen');
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: Colors.background }]}>
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+          <Text style={[styles.loadingText, { color: Colors.textPrimary }]}>Loading results...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   // Use passed parameters directly if available, otherwise fetch from API
   const hasDirectParams = correctAnswers && wrongAnswers && unanswered;
@@ -85,11 +101,17 @@ export default function TestResultsScreen() {
   };
 
   const handleViewSolutions = () => {
+    console.log('🔍 View Solutions clicked with params:', {
+      sessionId: sessionId || 'mock-session',
+      resultId: resultId || 'mock-result',
+      testTitle: testTitle || 'Test Solutions',
+    });
     router.push({
       pathname: '/test/solutions',
       params: {
-        sessionId,
-        resultId,
+        sessionId: sessionId || 'mock-session',
+        resultId: resultId || 'mock-result',
+        testTitle: testTitle || 'Test Solutions',
       },
     });
   };
@@ -153,8 +175,6 @@ export default function TestResultsScreen() {
       </SafeAreaView>
     );
   }
-
-  const styles = getStyles(Colors);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -387,6 +407,11 @@ const getStyles = (Colors: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   header: {
     flexDirection: 'row',

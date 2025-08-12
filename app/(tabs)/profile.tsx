@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Switch } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Switch, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { User, Settings, Bell, Shield, CircleHelp as HelpCircle, LogOut, ChevronRight, Trophy, BookOpen, Clock, Target, Star, Download, Globe, Moon } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -8,21 +8,41 @@ import { getTheme } from '@/theme';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { LanguageSelector } from '@/components/shared';
+import { useGetProfileQuery } from '@/store/api/userApi';
+import { useDispatch } from 'react-redux';
+import { clearAuth } from '@/store/slices/authSlice';
+import { userApi } from '@/store/api/userApi';
+import { authApi } from '@/store/api/authApi';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { AUTH_CONFIG } from '@/config/constants';
 
 export default function ProfileScreen() {
   const [notificationsEnabled, setNotificationsEnabled] = React.useState(true);
   const { isDarkMode, toggleTheme } = useTheme();
   const { t, language } = useLanguage();
   const Colors = getTheme(isDarkMode);
-
-  const userStats = {
-    testsCompleted: 45,
-    totalScore: 2847,
-    averageScore: 85.2,
-    rank: 15,
-    studyHours: 127,
-    streak: 12,
+  const dispatch = useDispatch();
+  
+  const { data: profileData, isLoading, error } = useGetProfileQuery();
+  const userProfile = profileData?.data;
+  const userStats = userProfile?.stats || {
+    testsCompleted: 0,
+    totalScore: 0,
+    averageScore: 0,
+    rank: 0,
+    studyHours: 0,
+    streak: 0,
   };
+  
+  // Log profile data for debugging
+  React.useEffect(() => {
+    if (profileData) {
+      console.log('Profile Data:', profileData);
+    }
+    if (error) {
+      console.error('Profile Error:', error);
+    }
+  }, [profileData, error]);
 
   const achievements = [
     { id: 1, title: 'First Test', icon: Trophy, color: '#F59E0B', unlocked: true },
@@ -96,9 +116,46 @@ export default function ProfileScreen() {
   };
 
   const handleLogout = () => {
-    // Handle logout logic
-    router.push('/(auth)/login');
-    console.log('Logging out...');
+    Alert.alert(
+      'Logout',
+      'Are you sure you want to logout?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel'
+        },
+        {
+          text: 'Logout',
+          style: 'destructive',
+          onPress: async () => {
+            console.log('Logout confirmed');
+            try {
+              // Clear auth token from storage
+              console.log('Clearing token from AsyncStorage...');
+              await AsyncStorage.removeItem(AUTH_CONFIG.TOKEN_KEY);
+              
+              // Clear user data from AsyncStorage if any
+              await AsyncStorage.removeItem('user');
+              
+              // Clear Redux state
+              console.log('Clearing Redux state...');
+              dispatch(clearAuth());
+              
+              // Clear API cache
+              dispatch(userApi.util.resetApiState());
+              dispatch(authApi.util.resetApiState());
+              
+              // Navigate to login - using push to ensure navigation
+              console.log('Navigating to login screen...');
+              router.push('/(auth)/login');
+            } catch (error) {
+              console.error('Error during logout:', error);
+              Alert.alert('Error', 'Failed to logout. Please try again.');
+            }
+          }
+        }
+      ]
+    );
   };
 
   const styles = getStyles(Colors);
@@ -112,18 +169,33 @@ export default function ProfileScreen() {
           style={styles.profileHeader}
         >
           <View style={styles.profileInfo}>
-            <Image 
-              source={{ uri: 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&dpr=2' }}
-              style={styles.profileImage}
-            />
+            {userProfile?.avatarUrl ? (
+              <Image 
+                source={{ uri: userProfile.avatarUrl }}
+                style={styles.profileImage}
+              />
+            ) : (
+              <View style={[styles.profileImage, styles.profileImagePlaceholder]}>
+                <User size={32} color={Colors.white} />
+              </View>
+            )}
             <View style={styles.profileDetails}>
-              <Text style={styles.profileName}>John Doe</Text>
-              <Text style={styles.profileEmail}>john.doe@example.com</Text>
-              <Text style={styles.profileJoined}>Member since Jan 2024</Text>
+              <Text style={styles.profileName}>
+                {userProfile?.fullName || userProfile?.username || 'Student'}
+              </Text>
+              <Text style={styles.profileEmail}>{userProfile?.email || ''}</Text>
+              <Text style={styles.profileJoined}>
+                Member since {userProfile?.created_at ? 
+                  new Date(userProfile.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) 
+                  : 'N/A'}
+              </Text>
             </View>
           </View>
           
-          <TouchableOpacity style={styles.editButton}>
+          <TouchableOpacity 
+            style={styles.editButton}
+            onPress={() => router.push('/account-settings')}
+          >
             <Settings size={20} color={Colors.white} />
           </TouchableOpacity>
         </LinearGradient>
@@ -188,6 +260,26 @@ export default function ProfileScreen() {
               </View>
             ))}
           </ScrollView>
+        </View>
+
+        {/* Quick Actions */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Quick Actions</Text>
+          <TouchableOpacity 
+            style={styles.menuItem}
+            onPress={() => router.push('/test-history')}
+          >
+            <View style={styles.menuItemLeft}>
+              <View style={styles.menuIconContainer}>
+                <BookOpen size={20} color="#6B7280" />
+              </View>
+              <View style={styles.menuItemContent}>
+                <Text style={styles.menuItemTitle}>Test History</Text>
+                <Text style={styles.menuItemDescription}>View your past test performance</Text>
+              </View>
+            </View>
+            <ChevronRight size={20} color="#9CA3AF" />
+          </TouchableOpacity>
         </View>
 
         {/* Menu Items */}
@@ -271,6 +363,11 @@ const getStyles = (Colors: any) => StyleSheet.create({
     marginRight: 16,
     borderWidth: 3,
     borderColor: Colors.white,
+  },
+  profileImagePlaceholder: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   profileDetails: {
     flex: 1,

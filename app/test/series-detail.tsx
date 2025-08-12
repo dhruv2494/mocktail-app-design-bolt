@@ -7,8 +7,7 @@ import { getTheme } from '@/theme';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { 
-  useGetTestSeriesByIdQuery,
-  useGetSeriesTestsQuery
+  useGetTestSeriesByIdQuery
 } from '@/store/api/testSeriesApi';
 import { SkeletonLoader } from '@/components/shared/SkeletonLoader';
 import Toast from 'react-native-toast-message';
@@ -30,16 +29,9 @@ export default function SeriesDetailScreen() {
     skip: !seriesId,
   });
 
-  const {
-    data: testsData,
-    isLoading: testsLoading,
-    refetch: refetchTests,
-  } = useGetSeriesTestsQuery(seriesId!, {
-    skip: !seriesId,
-  });
-
+  // No longer need separate tests API call - tests are included in series data
   const series = seriesData?.data;
-  const tests = testsData?.data || [];
+  const tests = series?.tests || [];
 
   const handleTestSelect = (testId: string, testTitle: string) => {
     // Find the test object to get the UUID
@@ -211,10 +203,9 @@ export default function SeriesDetailScreen() {
         style={styles.content}
         refreshControl={
           <RefreshControl
-            refreshing={seriesLoading || testsLoading}
+            refreshing={seriesLoading}
             onRefresh={() => {
               refetchSeries();
-              refetchTests();
             }}
             colors={[Colors.primary]}
             tintColor={Colors.primary}
@@ -343,13 +334,7 @@ export default function SeriesDetailScreen() {
             </Text>
           </View>
 
-          {testsLoading ? (
-            Array.from({ length: 3 }).map((_, index) => (
-              <View key={index} style={styles.categoryCard}>
-                <SkeletonLoader width="100%" height={60} style={{ borderRadius: 12 }} />
-              </View>
-            ))
-          ) : tests.length === 0 ? (
+          {tests.length === 0 ? (
             <View style={styles.emptyState}>
               <BookOpen size={48} color={Colors.textSubtle} />
               <Text style={[styles.emptyTitle, { color: Colors.textPrimary }]}>

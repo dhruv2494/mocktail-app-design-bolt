@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Switch,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -21,9 +22,11 @@ import {
   Grid3X3,
   RotateCcw,
 } from 'lucide-react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { getTheme } from '@/theme';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { useReviewAnswersQuery } from '@/store/api/quizApi';
 
 interface Question {
   id: number;
@@ -39,9 +42,17 @@ interface Question {
 }
 
 export default function SolutionsScreen() {
+  console.log('📚 Solutions screen mounted');
+  const params = useLocalSearchParams();
+  console.log('📚 Received params:', params);
+  const { sessionId, resultId, testTitle } = params;
+  
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const { isDarkMode } = useTheme();
   const Colors = getTheme(isDarkMode);
+  const styles = getStyles(Colors);
+  const { t } = useLanguage();
+  
   const [showAnswers, setShowAnswers] = useState<{ [key: number]: boolean }>(
     {}
   );
@@ -51,7 +62,22 @@ export default function SolutionsScreen() {
   const [reattemptAnswers, setReattemptAnswers] = useState<{ [key: number]: number }>({});
   const [hasReattempted, setHasReattempted] = useState<{ [key: number]: boolean }>({});
 
-  const questions: Question[] = [
+  // Use real API data
+  const useMockData = false;
+  
+  // Fetch review data from API (when available)
+  const { 
+    data: reviewData, 
+    isLoading: loadingReview,
+    error: reviewError 
+  } = useReviewAnswersQuery({
+    session_id: sessionId as string,
+  }, {
+    skip: !sessionId || useMockData,
+  });
+
+  // Mock data for testing
+  const mockQuestions: Question[] = [
     {
       id: 1,
       question: 'What is the capital of India?',
@@ -59,7 +85,7 @@ export default function SolutionsScreen() {
       correctAnswer: 1,
       userAnswer: 1,
       explanation:
-        'New Delhi is the capital of India and serves as the seat of the Government of India. It was officially declared as the capital in 1911, replacing Calcutta (now Kolkata). The city houses important government buildings including the Parliament House, Rashtrapati Bhavan, and various ministries.',
+        'New Delhi is the capital of India and serves as the seat of the Government of India. It was officially declared as the capital in 1911, replacing Calcutta (now Kolkata).',
       subject: 'General Knowledge',
       difficulty: 'Easy',
       timeSpent: 45,
@@ -72,53 +98,41 @@ export default function SolutionsScreen() {
       correctAnswer: 2,
       userAnswer: 3,
       explanation:
-        "Jupiter is the largest planet in our solar system, with a mass greater than all other planets combined. It's a gas giant with a diameter of about 142,984 km, which is more than 11 times the diameter of Earth. Jupiter has a strong magnetic field and at least 79 known moons, including the four largest called the Galilean moons.",
+        "Jupiter is the largest planet in our solar system, with a mass greater than all other planets combined. It's a gas giant with a diameter of about 142,984 km.",
       subject: 'Science',
       difficulty: 'Medium',
       timeSpent: 67,
     },
-    {
-      id: 3,
-      question: 'What is 15% of 200?',
-      options: ['25', '30', '35', '40'],
-      correctAnswer: 1,
-      userAnswer: undefined,
-      explanation:
-        'To calculate 15% of 200:\n15% = 15/100 = 0.15\n15% of 200 = 0.15 × 200 = 30\n\nAlternatively, you can think of it as:\n15% of 200 = (15 × 200) ÷ 100 = 3000 ÷ 100 = 30',
-      subject: 'Mathematics',
-      difficulty: 'Easy',
-      timeSpent: 0,
-    },
-    {
-      id: 4,
-      question: "Who wrote the book 'Pride and Prejudice'?",
-      options: [
-        'Charlotte Brontë',
-        'Jane Austen',
-        'Emily Dickinson',
-        'Virginia Woolf',
-      ],
-      correctAnswer: 1,
-      userAnswer: 0,
-      explanation:
-        'Pride and Prejudice was written by Jane Austen and published in 1813. It is one of the most famous works of English literature and follows the character development of Elizabeth Bennet, the dynamic protagonist. The novel deals with issues of manners, upbringing, morality, education, and marriage in the society of the landed gentry of early 19th-century England.',
-      subject: 'English Literature',
-      difficulty: 'Medium',
-      timeSpent: 89,
-    },
-    {
-      id: 5,
-      question: "Which gas is most abundant in Earth's atmosphere?",
-      options: ['Oxygen', 'Carbon Dioxide', 'Nitrogen', 'Hydrogen'],
-      correctAnswer: 2,
-      userAnswer: 0,
-      explanation:
-        "Nitrogen makes up about 78% of Earth's atmosphere, making it the most abundant gas. Oxygen comprises about 21%, while argon makes up about 0.93%. Carbon dioxide, despite its importance for climate and life, makes up only about 0.04% of the atmosphere. The remaining gases include neon, helium, methane, krypton, and hydrogen in very small amounts.",
-      subject: 'Science',
-      difficulty: 'Medium',
-      timeSpent: 52,
-    },
   ];
+
+  // Transform API data to match our interface
+  const transformQuestions = (apiQuestions: any[]): Question[] => {
+    if (!apiQuestions) return [];
+    
+    return apiQuestions.map((q, index) => {
+      // Determine language preference (you can make this dynamic later)
+      const useGujarati = false; // For now, use English
+      
+      return {
+        id: q.id || index + 1,
+        question: useGujarati && q.question_text_gujarati ? q.question_text_gujarati : q.question_text,
+        options: q.options ? [q.options.A, q.options.B, q.options.C, q.options.D] : [],
+        correctAnswer: q.correct_option ? ['A', 'B', 'C', 'D'].indexOf(q.correct_option) : 0,
+        userAnswer: q.selected_option ? ['A', 'B', 'C', 'D'].indexOf(q.selected_option) : undefined,
+        explanation: q.explanation || 'No explanation available.',
+        subject: q.subject || 'General',
+        difficulty: q.difficulty_level === 'easy' ? 'Easy' : q.difficulty_level === 'medium' ? 'Medium' : 'Hard',
+        timeSpent: q.time_spent || 0,
+      };
+    });
+  };
+
+  // Use mock data or real data
+  const questions = useMockData 
+    ? mockQuestions 
+    : transformQuestions(reviewData?.data?.questions || []);
+  
+  console.log('📚 Questions loaded:', questions.length, 'questions');
 
   const toggleShowAnswer = (questionIndex: number) => {
     setShowAnswers((prev) => ({
@@ -236,8 +250,6 @@ export default function SolutionsScreen() {
     return `${minutes}m ${secs}s`;
   };
 
-  const currentQuestionData = questions[currentQuestion];
-  const answerStatus = getAnswerStatus(currentQuestionData, currentQuestion);
   const renderQuestionGrid = () => (
     <View style={styles.gridContainer}>
       <View style={styles.gridHeader}>
@@ -273,9 +285,9 @@ export default function SolutionsScreen() {
             style={[
               styles.gridItem,
               {
-                backgroundColor: getStatusColor(
-                  getAnswerStatus(questions[index], index)
-                ),
+                backgroundColor: questions[index] 
+                  ? getStatusColor(getAnswerStatus(questions[index], index))
+                  : Colors.muted,
               },
             ]}
             onPress={() => {
@@ -286,7 +298,7 @@ export default function SolutionsScreen() {
             <Text
               style={[
                 styles.gridItemText,
-                getAnswerStatus(questions[index], index) === 'unanswered' && {
+                questions[index] && getAnswerStatus(questions[index], index) === 'unanswered' && {
                   color: Colors.textSubtle,
                 },
               ]}
@@ -307,7 +319,56 @@ export default function SolutionsScreen() {
     );
   }
 
-  const styles = getStyles(Colors);
+  // Show loading state
+  if (!useMockData && loadingReview) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+          <Text style={[styles.loadingText, { color: Colors.textPrimary }]}>
+            Loading Solutions...
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Show error state
+  if (!useMockData && reviewError) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.centerContainer}>
+          <AlertCircle size={48} color={Colors.danger} />
+          <Text style={[styles.errorText, { color: Colors.textPrimary }]}>
+            Failed to load solutions
+          </Text>
+          <TouchableOpacity 
+            style={styles.retryButton}
+            onPress={() => router.back()}
+          >
+            <Text style={styles.retryButtonText}>Go Back</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // No questions
+  if (questions.length === 0) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.centerContainer}>
+          <BookOpen size={48} color={Colors.textSubtle} />
+          <Text style={[styles.emptyText, { color: Colors.textPrimary }]}>
+            No questions available
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  const currentQuestionData = questions[currentQuestion] || mockQuestions[0];
+  const answerStatus = currentQuestionData ? getAnswerStatus(currentQuestionData, currentQuestion) : 'unanswered';
 
   return (
     <SafeAreaView style={styles.container}>
@@ -325,15 +386,20 @@ export default function SolutionsScreen() {
             Question {currentQuestion + 1} of {questions.length}
           </Text>
         </View>
-        <View style={styles.controlButtons}>
+        <View style={styles.headerRight}>
           <TouchableOpacity
             style={styles.controlButton}
             onPress={() => setShowGrid(true)}
           >
-            <Grid3X3 size={16} color={Colors.textSubtle} />
+            <Grid3X3 size={20} color={Colors.textSubtle} />
           </TouchableOpacity>
         </View>
-        <View style={styles.headerRight}>
+      </View>
+
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Reattempt Toggle */}
+        <View style={styles.reattemptContainer}>
+          <Text style={styles.reattemptLabel}>Practice Mode</Text>
           <View style={styles.reattemptToggle}>
             <RotateCcw size={16} color={Colors.textSubtle} />
             <Switch
@@ -345,9 +411,7 @@ export default function SolutionsScreen() {
             />
           </View>
         </View>
-      </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Question Card */}
         <View style={styles.questionCard}>
           <View style={styles.questionHeader}>
@@ -658,6 +722,41 @@ const getStyles = (Colors: any) => StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background,
   },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  loadingText: {
+    fontSize: 16,
+    marginTop: 16,
+    color: Colors.textSubtle,
+  },
+  errorText: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginTop: 16,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  emptyText: {
+    fontSize: 16,
+    marginTop: 16,
+    color: Colors.textSubtle,
+  },
+  retryButton: {
+    marginTop: 16,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+    backgroundColor: Colors.primary,
+  },
+  retryButtonText: {
+    color: Colors.white,
+    fontSize: 16,
+    fontWeight: '600',
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -699,6 +798,22 @@ const getStyles = (Colors: any) => StyleSheet.create({
   reattemptToggle: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  reattemptContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    backgroundColor: Colors.cardBackground,
+    marginBottom: 16,
+    borderRadius: 12,
+    marginHorizontal: 20,
+  },
+  reattemptLabel: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: Colors.textPrimary,
   },
   navigationContainer: {
     paddingHorizontal: 20,
