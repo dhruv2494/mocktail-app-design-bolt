@@ -1,6 +1,6 @@
 // API Configuration
 export const API_CONFIG = {
-  BASE_URL:  'https://da3473315e80.ngrok-free.app',
+  BASE_URL:  'https://mocktaleacademy.com/backend',
   ENDPOINTS: {
     AUTH: {
       REGISTER: '/api/users/register',
