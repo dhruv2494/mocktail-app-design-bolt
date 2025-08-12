@@ -1,10 +1,7 @@
-import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import { createApi } from '@reduxjs/toolkit/query/react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { RootState } from '../store';
-
-import { API_CONFIG, AUTH_CONFIG } from '@/config/constants';
-
-const BASE_URL = `${API_CONFIG.BASE_URL}/api`;
+import { baseQueryWithReauth } from './baseQuery';
+import { AUTH_CONFIG } from '@/config/constants';
 
 export interface RegisterRequest {
   username: string;
@@ -62,31 +59,7 @@ export interface ProfileResponse {
 
 export const authApi = createApi({
   reducerPath: 'authApi',
-  baseQuery: fetchBaseQuery({
-    baseUrl: BASE_URL,
-    prepareHeaders: async (headers, { getState }) => {
-      let token = (getState() as RootState).auth.token;
-      
-      // If no token in Redux, try to get it from AsyncStorage as fallback
-      if (!token) {
-        try {
-          token = await AsyncStorage.getItem(AUTH_CONFIG.TOKEN_KEY);
-        } catch (error) {
-          console.error('Error getting token from AsyncStorage:', error);
-        }
-      }
-      
-      if (token) {
-        headers.set('authorization', `Bearer ${token}`);
-      }
-      headers.set('content-type', 'application/json');
-      // Add ngrok bypass header if using ngrok
-      if (API_CONFIG.BASE_URL.includes('ngrok')) {
-        headers.set('ngrok-skip-browser-warning', 'true');
-      }
-      return headers;
-    },
-  }),
+  baseQuery: baseQueryWithReauth,
   tagTypes: ['Auth'],
   endpoints: (builder) => ({
     register: builder.mutation<AuthResponse, RegisterRequest>({

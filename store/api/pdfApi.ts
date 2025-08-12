@@ -1,8 +1,5 @@
-import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
-import { RootState } from '../store';
-import { API_CONFIG } from '@/config/constants';
-
-const BASE_URL = `${API_CONFIG.BASE_URL}/api`;
+import { createApi } from '@reduxjs/toolkit/query/react';
+import { baseQueryWithReauth } from './baseQuery';
 
 export interface PDFCategory {
   id: number;
@@ -103,21 +100,7 @@ export interface PDFListParams {
 
 export const pdfApi = createApi({
   reducerPath: 'pdfApi',
-  baseQuery: fetchBaseQuery({
-    baseUrl: BASE_URL,
-    prepareHeaders: async (headers, { getState }) => {
-      const token = (getState() as RootState).auth.token;
-      if (token) {
-        headers.set('authorization', `Bearer ${token}`);
-      }
-      headers.set('content-type', 'application/json');
-      // Add ngrok bypass header if using ngrok
-      if (API_CONFIG.BASE_URL.includes('ngrok')) {
-        headers.set('ngrok-skip-browser-warning', 'true');
-      }
-      return headers;
-    },
-  }),
+  baseQuery: baseQueryWithReauth,
   tagTypes: ['PDF', 'PDFCategory', 'PDFStats'],
   endpoints: (builder) => ({
     // Get PDFs with pagination and filters

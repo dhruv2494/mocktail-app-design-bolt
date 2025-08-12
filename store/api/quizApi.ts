@@ -1,8 +1,5 @@
-import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
-import { RootState } from '../store';
-import { API_CONFIG } from '@/config/constants';
-
-const BASE_URL = `${API_CONFIG.BASE_URL}/api`;
+import { createApi } from '@reduxjs/toolkit/query/react';
+import { baseQueryWithReauth } from './baseQuery';
 
 // Updated interface to match backend question structure
 export interface QuizQuestion {
@@ -193,42 +190,7 @@ export interface ReviewAnswersResponse {
 
 export const quizApi = createApi({
   reducerPath: 'quizApi',
-  baseQuery: fetchBaseQuery({
-    baseUrl: BASE_URL,
-    prepareHeaders: async (headers, { getState }) => {
-      const authState = (getState() as RootState).auth;
-      let token = authState.token;
-      
-      // If no token in Redux, try to get it from AsyncStorage as fallback
-      if (!token) {
-        try {
-          const AsyncStorage = require('@react-native-async-storage/async-storage').default;
-          const { AUTH_CONFIG } = require('@/config/constants');
-          token = await AsyncStorage.getItem(AUTH_CONFIG.TOKEN_KEY);
-          console.log('🔍 Frontend Auth Debug - Token from AsyncStorage fallback:', !!token);
-        } catch (error) {
-          console.error('Error getting token from AsyncStorage:', error);
-        }
-      }
-      
-      console.log('🔍 Frontend Auth Debug - Token exists:', !!token);
-      console.log('🔍 Frontend Auth Debug - Is authenticated:', authState.isAuthenticated);
-      console.log('🔍 Frontend Auth Debug - User:', authState.user?.email || 'No user');
-      
-      if (token) {
-        console.log('🔍 Frontend Auth Debug - Setting Authorization header');
-        headers.set('authorization', `Bearer ${token}`);
-      } else {
-        console.log('❌ Frontend Auth Debug - No token found in Redux state or AsyncStorage');
-      }
-      headers.set('content-type', 'application/json');
-      // Add ngrok bypass header if using ngrok
-      if (API_CONFIG.BASE_URL.includes('ngrok')) {
-        headers.set('ngrok-skip-browser-warning', 'true');
-      }
-      return headers;
-    },
-  }),
+  baseQuery: baseQueryWithReauth,
   tagTypes: ['QuizSession', 'QuizResult', 'SavedAnswers'],
   endpoints: (builder) => ({
     // Start a new test session using backend API

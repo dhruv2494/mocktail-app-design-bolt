@@ -1,9 +1,7 @@
-import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
-import { RootState } from '../store';
-import { API_CONFIG } from '@/config/constants';
+import { createApi } from '@reduxjs/toolkit/query/react';
+import { baseQueryWithReauth } from './baseQuery';
 import { Platform } from 'react-native';
 
-const BASE_URL = `${API_CONFIG.BASE_URL}/api`;
 
 export interface UserProfile {
   id: number;
@@ -71,30 +69,7 @@ export interface Subscription {
 
 export const userApi = createApi({
   reducerPath: 'userApi',
-  baseQuery: fetchBaseQuery({
-    baseUrl: BASE_URL,
-    prepareHeaders: async (headers, { getState }) => {
-      const authState = (getState() as RootState).auth;
-      let token = authState.token;
-      
-      // If no token in Redux, try to get it from AsyncStorage as fallback
-      if (!token) {
-        try {
-          const AsyncStorage = require('@react-native-async-storage/async-storage').default;
-          const { AUTH_CONFIG } = require('@/config/constants');
-          token = await AsyncStorage.getItem(AUTH_CONFIG.TOKEN_KEY);
-        } catch (error) {
-          console.log('Error getting token from AsyncStorage:', error);
-        }
-      }
-      
-      if (token) {
-        headers.set('Authorization', `Bearer ${token}`);
-      }
-      
-      return headers;
-    },
-  }),
+  baseQuery: baseQueryWithReauth,
   tagTypes: ['Profile', 'TestHistory', 'Subscriptions'],
   endpoints: (builder) => ({
     // Get user profile
