@@ -24,5 +24,5 @@ export const APP_CONFIG = {
   APP_NAME: 'MockTale',
   VERSION: '1.0.0',
   IS_DEVELOPMENT: __DEV__,
-  ENABLE_NOTIFICATIONS: true, // Can be set to false during development
+  ENABLE_NOTIFICATIONS: false, // Disabled until Firebase configuration is added
 };

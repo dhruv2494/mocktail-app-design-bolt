@@ -6,13 +6,23 @@ import { API_CONFIG, AUTH_CONFIG } from '@/config/constants';
 let Device: any = null;
 let Notifications: any = null;
 
-try {
-  if (Platform.OS !== 'web') {
-    Device = require('expo-device');
-    Notifications = require('expo-notifications');
+// Check if notifications are enabled before attempting to load modules
+const { APP_CONFIG } = require('@/config/constants');
+
+if (APP_CONFIG.ENABLE_NOTIFICATIONS) {
+  try {
+    if (Platform.OS !== 'web') {
+      Device = require('expo-device');
+      Notifications = require('expo-notifications');
+    }
+  } catch (error) {
+    console.warn('Expo notifications not available, notifications will be disabled:', error);
+    // Ensure these are null to prevent any usage
+    Device = null;
+    Notifications = null;
   }
-} catch (error) {
-  console.warn('Expo notifications not available, notifications will be disabled:', error);
+} else {
+  console.log('📵 Notifications disabled in configuration - skipping module imports');
 }
 
 // Configure how notifications are handled when the app is in the foreground
@@ -59,6 +69,14 @@ class NotificationService {
    */
   async initialize(): Promise<boolean> {
     try {
+      // Early return if notifications are disabled in config
+      const { APP_CONFIG } = require('@/config/constants');
+      if (!APP_CONFIG.ENABLE_NOTIFICATIONS) {
+        console.log('📵 Notification service disabled in configuration');
+        this.isInitialized = true;
+        return true;
+      }
+
       if (this.isInitialized) {
         console.log('📋 Notification service already initialized');
         return true;
