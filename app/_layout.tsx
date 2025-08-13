@@ -10,6 +10,7 @@ import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
 import { LanguageProvider } from '@/contexts/LanguageContext';
 import { notificationService } from '@/services/NotificationService';
 import { APP_CONFIG } from '@/config/constants';
+import { AppErrorBoundary } from '@/components/AppErrorBoundary';
 
 function AppContent() {
   useFrameworkReady();
@@ -62,12 +63,14 @@ function AppContent() {
 
 export default function RootLayout() {
   return (
-    <Provider store={store}>
-      <ThemeProvider>
-        <LanguageProvider>
-          <AppContent />
-        </LanguageProvider>
-      </ThemeProvider>
-    </Provider>
+    <AppErrorBoundary>
+      <Provider store={store}>
+        <ThemeProvider>
+          <LanguageProvider>
+            <AppContent />
+          </LanguageProvider>
+        </ThemeProvider>
+      </Provider>
+    </AppErrorBoundary>
   );
 }

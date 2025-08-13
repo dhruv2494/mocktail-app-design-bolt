@@ -17,8 +17,8 @@ export default function HomeScreen() {
   const userProfile = profileData?.data;
   
   const quickActions = [
-    { id: 1, title: t.freeTests.title, icon: Play, color: Colors.success, route: '/free-tests' },
-    { id: 2, title: t.freeTests.pyqs, icon: Clock, color: Colors.accent, route: '/free-tests' },
+    { id: 1, title: t.freeTests.title, icon: Play, color: Colors.success, route: '/test-series' },
+    { id: 2, title: t.freeTests.pyqs, icon: Clock, color: Colors.accent, route: '/test-series' },
     { id: 3, title: t.testSeries.title, icon: BookOpen, color: Colors.primary, route: '/test-series' },
     { id: 4, title: t.pdfs.title, icon: FileText, color: Colors.primaryLight, route: '/pdfs' },
   ];

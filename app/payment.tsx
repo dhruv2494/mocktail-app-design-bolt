@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronLeft, CreditCard, Smartphone, Wallet, Shield, CheckCircle } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -7,33 +7,64 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { getTheme } from '@/theme';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useGetTestSeriesByIdQuery } from '@/store/api/testSeriesApi';
+import { SkeletonLoader } from '@/components/shared/SkeletonLoader';
 
 export default function PaymentScreen() {
   const { isDarkMode } = useTheme();
   const { t } = useLanguage();
   const Colors = getTheme(isDarkMode);
-  const { seriesId } = useLocalSearchParams();
+  const { seriesId } = useLocalSearchParams<{ seriesId: string }>();
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('razorpay');
 
-  // Sample series data - in real app, this would be fetched based on seriesId
-  const seriesData = {
-    id: 1,
-    title: 'PSI Mock Test Series',
-    price: 299,
-    originalPrice: 499,
-    tests: 10,
-    freeTests: 2,
-    duration: '3 months',
-    description: 'Complete preparation for Police Sub Inspector exam with detailed solutions',
-    discount: Math.round((1 - 299 / 499) * 100),
-    features: [
-      t.payment.features.fullLengthTests.replace('{count}', '10'),
-      t.payment.features.freeTests.replace('{count}', '2'),
-      t.payment.features.detailedSolutions,
-      t.payment.features.performanceAnalytics,
-      t.payment.features.multiLanguage,
-      t.payment.features.validity.replace('{duration}', '3')
-    ]
+  // Fetch test series data from API
+  const { 
+    data: seriesResponse, 
+    isLoading, 
+    isError, 
+    error 
+  } = useGetTestSeriesByIdQuery(seriesId || '', {
+    skip: !seriesId
+  });
+
+  const series = seriesResponse?.data;
+
+  // Calculate discount percentage
+  const calculateDiscount = () => {
+    if (!series?.original_price || !series?.price) return 0;
+    return Math.round((1 - series.price / series.original_price) * 100);
+  };
+
+  // Format duration
+  const formatDuration = () => {
+    if (!series?.subscription_duration_days) return '';
+    const months = Math.round(series.subscription_duration_days / 30);
+    return months > 1 ? `${months} months` : `${months} month`;
+  };
+
+  // Generate features list
+  const getFeatures = () => {
+    if (!series) return [];
+    
+    const features = [];
+    
+    if (series.tests_count) {
+      features.push(t.payment.features.fullLengthTests.replace('{count}', series.tests_count.toString()));
+    }
+    
+    if (series.demo_tests_count) {
+      features.push(t.payment.features.freeTests.replace('{count}', series.demo_tests_count.toString()));
+    }
+    
+    features.push(t.payment.features.detailedSolutions);
+    features.push(t.payment.features.performanceAnalytics);
+    features.push(t.payment.features.multiLanguage);
+    
+    if (series.subscription_duration_days) {
+      features.push(t.payment.features.validity.replace('{duration}', formatDuration()));
+    }
+    
+    return features;
   };
 
   const paymentMethods = [
@@ -61,10 +92,12 @@ export default function PaymentScreen() {
   ];
 
   const handlePayment = () => {
+    if (!series) return;
+    
     // In real implementation, integrate with actual payment gateway
     Alert.alert(
       t.payment.gatewayIntegration,
-      t.payment.integrationMessage.replace('{method}', selectedPaymentMethod).replace('{amount}', `₹${seriesData.price}`),
+      t.payment.integrationMessage.replace('{method}', selectedPaymentMethod).replace('{amount}', `₹${series.price}`),
       [
         { text: t.common.cancel, style: 'cancel' },
         { 
@@ -83,6 +116,57 @@ export default function PaymentScreen() {
 
   const styles = getStyles(Colors);
 
+  // Loading state
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity 
+            style={styles.backButton}
+            onPress={() => router.back()}
+          >
+            <ChevronLeft size={24} color={Colors.textPrimary} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>{t.payment.purchaseTestSeries}</Text>
+          <View style={styles.placeholder} />
+        </View>
+        
+        <View style={styles.loadingContainer}>
+          <SkeletonLoader height={200} style={{ margin: 20, borderRadius: 16 }} />
+          <SkeletonLoader height={250} style={{ margin: 20, marginTop: 0, borderRadius: 16 }} />
+          <SkeletonLoader height={300} style={{ margin: 20, marginTop: 0, borderRadius: 16 }} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Error state
+  if (isError || !series) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity 
+            style={styles.backButton}
+            onPress={() => router.back()}
+          >
+            <ChevronLeft size={24} color={Colors.textPrimary} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>{t.payment.purchaseTestSeries}</Text>
+          <View style={styles.placeholder} />
+        </View>
+        
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>
+            {t.common.errorLoadingData || 'Failed to load test series details'}
+          </Text>
+          <TouchableOpacity style={styles.retryButton} onPress={() => router.back()}>
+            <Text style={styles.retryButtonText}>{t.common.goBack || 'Go Back'}</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container}>
         <ScrollView showsVerticalScrollIndicator={false}>
@@ -100,11 +184,11 @@ export default function PaymentScreen() {
 
         {/* Series Summary */}
         <View style={styles.summaryCard}>
-          <Text style={styles.summaryTitle}>{seriesData.title}</Text>
-          <Text style={styles.summaryDescription}>{seriesData.description}</Text>
+          <Text style={styles.summaryTitle}>{series.name || series.title}</Text>
+          <Text style={styles.summaryDescription}>{series.description || ''}</Text>
           
           <View style={styles.featuresList}>
-            {seriesData.features.map((feature, index) => (
+            {getFeatures().map((feature, index) => (
               <View key={index} style={styles.featureItem}>
                 <CheckCircle size={16} color={Colors.success} />
                 <Text style={styles.featureText}>{feature}</Text>
@@ -117,28 +201,34 @@ export default function PaymentScreen() {
         <View style={styles.priceCard}>
           <Text style={styles.priceCardTitle}>{t.payment.priceDetails}</Text>
           
-          <View style={styles.priceRow}>
-            <Text style={styles.priceLabel}>{t.payment.originalPrice}</Text>
-            <Text style={styles.originalPrice}>₹{seriesData.originalPrice}</Text>
-          </View>
-          
-          <View style={styles.priceRow}>
-            <Text style={styles.priceLabel}>{t.payment.discount} ({seriesData.discount}% {t.payment.off})</Text>
-            <Text style={styles.discountAmount}>-₹{seriesData.originalPrice - seriesData.price}</Text>
-          </View>
-          
-          <View style={styles.divider} />
+          {series.original_price && series.original_price > series.price && (
+            <>
+              <View style={styles.priceRow}>
+                <Text style={styles.priceLabel}>{t.payment.originalPrice}</Text>
+                <Text style={styles.originalPrice}>₹{series.original_price}</Text>
+              </View>
+              
+              <View style={styles.priceRow}>
+                <Text style={styles.priceLabel}>{t.payment.discount} ({calculateDiscount()}% {t.payment.off})</Text>
+                <Text style={styles.discountAmount}>-₹{series.original_price - series.price}</Text>
+              </View>
+              
+              <View style={styles.divider} />
+            </>
+          )}
           
           <View style={styles.priceRow}>
             <Text style={styles.totalLabel}>{t.payment.totalAmount}</Text>
-            <Text style={styles.totalPrice}>₹{seriesData.price}</Text>
+            <Text style={styles.totalPrice}>₹{series.price}</Text>
           </View>
 
-          <View style={styles.savingsHighlight}>
-            <Text style={styles.savingsText}>
-              {t.payment.youSave.replace('{amount}', `₹${seriesData.originalPrice - seriesData.price}`)}
-            </Text>
-          </View>
+          {series.original_price && series.original_price > series.price && (
+            <View style={styles.savingsHighlight}>
+              <Text style={styles.savingsText}>
+                {t.payment.youSave.replace('{amount}', `₹${series.original_price - series.price}`)}
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* Payment Methods */}
@@ -210,7 +300,7 @@ export default function PaymentScreen() {
               end={{ x: 1, y: 0 }}
             >
               <Text style={styles.paymentButtonText}>
-                {t.payment.payNow.replace('{amount}', `₹${seriesData.price}`)}
+                {t.payment.payNow.replace('{amount}', `₹${series.price}`)}
               </Text>
             </LinearGradient>
           </TouchableOpacity>
@@ -477,5 +567,32 @@ const getStyles = (Colors: any) => StyleSheet.create({
     color: Colors.textSubtle,
     textAlign: 'center',
     lineHeight: 16,
+  },
+  loadingContainer: {
+    flex: 1,
+    padding: 20,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  errorText: {
+    fontSize: 16,
+    color: Colors.error,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  retryButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    backgroundColor: Colors.primary,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: Colors.white,
   },
 });

@@ -10,7 +10,13 @@ import { useGetPDFByIdQuery } from '@/store/api/pdfApi';
 import { SkeletonLoader } from '@/components/shared/SkeletonLoader';
 import { API_CONFIG } from '@/config/constants';
 import SecureBase64PDFViewer from '@/components/SecureBase64PDFViewer';
-import * as ScreenCapture from 'expo-screen-capture';
+// Conditional import for expo-screen-capture
+let ScreenCapture: any = null;
+try {
+  ScreenCapture = require('expo-screen-capture');
+} catch (error) {
+  console.warn('expo-screen-capture not available:', error);
+}
 
 export default function PDFViewerScreen() {
   const { pdfId } = useLocalSearchParams<{ pdfId: string }>();
@@ -35,7 +41,7 @@ export default function PDFViewerScreen() {
   useEffect(() => {
     // Enable screenshot prevention when screen is mounted
     const activateScreenshotPrevention = async () => {
-      if (Platform.OS !== 'web') {
+      if (Platform.OS !== 'web' && ScreenCapture) {
         try {
           await ScreenCapture.preventScreenCaptureAsync();
           setIsSecure(true);
@@ -43,6 +49,9 @@ export default function PDFViewerScreen() {
           console.error('Failed to prevent screenshots:', error);
           setIsSecure(false);
         }
+      } else if (!ScreenCapture) {
+        console.warn('Screenshot prevention not available - expo-screen-capture module not loaded');
+        setIsSecure(false);
       }
     };
 
@@ -50,7 +59,7 @@ export default function PDFViewerScreen() {
 
     // Cleanup: Re-enable screenshots when leaving the screen
     return () => {
-      if (Platform.OS !== 'web') {
+      if (Platform.OS !== 'web' && ScreenCapture) {
         ScreenCapture.allowScreenCaptureAsync().catch(console.error);
       }
     };

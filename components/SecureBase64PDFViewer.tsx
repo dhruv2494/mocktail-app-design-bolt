@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, Platform, ScrollView } from 'react-native';
 import { WebView } from 'react-native-webview';
 import * as ScreenCapture from 'expo-screen-capture';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { AUTH_CONFIG, API_CONFIG } from '@/config/constants';
 
 interface SecureBase64PDFViewerProps {
   pdfId: string;
@@ -48,9 +50,39 @@ const SecureBase64PDFViewer: React.FC<SecureBase64PDFViewerProps> = ({
   const fetchPDFData = async () => {
     try {
       setIsLoading(true);
-      const baseUrl = 'https://da3473315e80.ngrok-free.app';
-      const response = await fetch(`${baseUrl}/api/pdfs/${pdfId}/secure`);
-      const data = await response.json();
+      
+      // Get auth token
+      const token = await AsyncStorage.getItem(AUTH_CONFIG.TOKEN_KEY);
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+      
+      const response = await fetch(`${API_CONFIG.BASE_URL}/api/pdfs/${pdfId}/secure`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'ngrok-skip-browser-warning': 'true',
+        }
+      });
+      
+      // Check if response is ok
+      if (!response.ok) {
+        const text = await response.text();
+        console.error('PDF fetch failed:', response.status, text);
+        throw new Error(`Failed to fetch PDF: ${response.status}`);
+      }
+      
+      // Try to parse as JSON
+      const contentType = response.headers.get('content-type');
+      let data;
+      
+      if (contentType && contentType.includes('application/json')) {
+        data = await response.json();
+      } else {
+        const text = await response.text();
+        console.error('Expected JSON but got:', contentType, text.substring(0, 100));
+        throw new Error('Invalid response format - expected JSON');
+      }
 
       if (data.success && data.data.content) {
         setPdfData(data.data.content);

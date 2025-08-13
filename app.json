@@ -1,10 +1,10 @@
 {
   "expo": {
-    "name": "bolt-expo-nativewind",
-    "slug": "bolt-expo-nativewind",
+    "name": "Mocktale Academy",
+    "slug": "Mocktale Academy",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/MockTale.jpg",
     "scheme": "myapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": false,
@@ -14,7 +14,7 @@
     "web": {
       "bundler": "metro",
       "output": "single",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/MockTale.jpg"
     },
     "plugins": [
       "expo-router",
@@ -29,11 +29,16 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "9964aa41-ae13-4306-92b4-9c3a933ee85b"
+        "projectId": "0c6ce86e-f047-4e02-9de7-cee1b0146cff"
       }
     },
     "android": {
-      "package": "com.hello2494.boltexponativewind"
-    }
+      "package": "com.hello2494.boltexponativewind",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ]
+    },
+    "owner": "wegacano"
   }
 }
