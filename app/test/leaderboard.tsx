@@ -4,12 +4,22 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Trophy, Medal, Award, TrendingUp, Calendar, ChevronLeft, Crown } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { Colors } from '@/theme';
+import { getTheme } from '@/theme';
+import { useTheme } from '@/contexts/ThemeContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function TestLeaderboardScreen() {
   const [selectedPeriod, setSelectedPeriod] = useState('This Test');
+  const { isDarkMode } = useTheme();
+  const { t } = useLanguage();
+  const Colors = getTheme(isDarkMode);
 
-  const periods = ['This Test', 'Weekly', 'Monthly', 'All Time'];
+  const periods = [
+    { key: 'This Test', label: t.leaderboard.periods.thisTest },
+    { key: 'Weekly', label: t.leaderboard.periods.weekly },
+    { key: 'Monthly', label: t.leaderboard.periods.monthly },
+    { key: 'All Time', label: t.leaderboard.periods.allTime }
+  ];
 
   const testInfo = {
     title: 'PSI Mock Test 1',
@@ -97,7 +107,7 @@ export default function TestLeaderboardScreen() {
   ];
 
   const currentUserRank = {
-    name: 'You',
+    name: t.leaderboard.you,
     score: 72,
     rank: 15,
     timeTaken: 6300,
@@ -127,6 +137,8 @@ export default function TestLeaderboardScreen() {
     }
   };
 
+  const styles = getStyles(Colors);
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
@@ -138,7 +150,7 @@ export default function TestLeaderboardScreen() {
           <ChevronLeft size={24} color={Colors.textSubtle} />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>Leaderboard</Text>
+          <Text style={styles.headerTitle}>{t.leaderboard.title}</Text>
           <Text style={styles.headerSubtitle}>{testInfo.title}</Text>
         </View>
         <TouchableOpacity style={styles.calendarButton}>
@@ -155,15 +167,15 @@ export default function TestLeaderboardScreen() {
           <View style={styles.statsGrid}>
             <View style={styles.statItem}>
               <Text style={styles.statNumber}>{testInfo.totalParticipants}</Text>
-              <Text style={styles.statLabel}>Participants</Text>
+              <Text style={styles.statLabel}>{t.leaderboard.participants}</Text>
             </View>
             <View style={styles.statItem}>
               <Text style={styles.statNumber}>{testInfo.averageScore}%</Text>
-              <Text style={styles.statLabel}>Average Score</Text>
+              <Text style={styles.statLabel}>{t.leaderboard.averageScore}</Text>
             </View>
             <View style={styles.statItem}>
               <Text style={styles.statNumber}>{testInfo.completionRate}%</Text>
-              <Text style={styles.statLabel}>Completion Rate</Text>
+              <Text style={styles.statLabel}>{t.leaderboard.completionRate}</Text>
             </View>
           </View>
         </LinearGradient>
@@ -178,18 +190,18 @@ export default function TestLeaderboardScreen() {
         >
           {periods.map((period) => (
             <TouchableOpacity
-              key={period}
+              key={period.key}
               style={[
                 styles.periodChip,
-                selectedPeriod === period && styles.periodChipActive
+                selectedPeriod === period.key && styles.periodChipActive
               ]}
-              onPress={() => setSelectedPeriod(period)}
+              onPress={() => setSelectedPeriod(period.key)}
             >
               <Text style={[
                 styles.periodText,
-                selectedPeriod === period && styles.periodTextActive
+                selectedPeriod === period.key && styles.periodTextActive
               ]}>
-                {period}
+                {period.label}
               </Text>
             </TouchableOpacity>
           ))}
@@ -197,7 +209,7 @@ export default function TestLeaderboardScreen() {
 
         {/* Top 3 Performers */}
         <View style={styles.topPerformersContainer}>
-          <Text style={styles.sectionTitle}>Top Performers</Text>
+          <Text style={styles.sectionTitle}>{t.leaderboard.topPerformers}</Text>
           <View style={styles.podiumContainer}>
             {/* 2nd Place */}
             <View style={styles.podiumItem}>
@@ -245,7 +257,7 @@ export default function TestLeaderboardScreen() {
 
         {/* Your Rank */}
         <View style={styles.yourRankContainer}>
-          <Text style={styles.sectionTitle}>Your Performance</Text>
+          <Text style={styles.sectionTitle}>{t.leaderboard.yourPerformance}</Text>
           <LinearGradient
             colors={[Colors.primaryExtraLight, Colors.white]}
             style={styles.yourRankCard}
@@ -257,7 +269,7 @@ export default function TestLeaderboardScreen() {
               <View style={styles.userInfo}>
                 <Text style={styles.userName}>{currentUserRank.name}</Text>
                 <Text style={styles.userStats}>
-                  {currentUserRank.accuracy}% accuracy • {formatTime(currentUserRank.timeTaken)}
+                  {currentUserRank.accuracy}% {t.leaderboard.accuracy} • {formatTime(currentUserRank.timeTaken)}
                 </Text>
               </View>
             </View>
@@ -270,7 +282,7 @@ export default function TestLeaderboardScreen() {
 
         {/* Full Leaderboard */}
         <View style={styles.leaderboardContainer}>
-          <Text style={styles.sectionTitle}>All Rankings</Text>
+          <Text style={styles.sectionTitle}>{t.leaderboard.allRankings}</Text>
           {leaderboardData.map((user) => (
             <View key={user.id} style={styles.leaderboardItem}>
               <View style={styles.rankInfo}>
@@ -281,7 +293,7 @@ export default function TestLeaderboardScreen() {
                 <View style={styles.userInfo}>
                   <Text style={styles.userName}>{user.name}</Text>
                   <Text style={styles.userStats}>
-                    {user.accuracy}% accuracy • {formatTime(user.timeTaken)}
+                    {user.accuracy}% {t.leaderboard.accuracy} • {formatTime(user.timeTaken)}
                   </Text>
                 </View>
               </View>
@@ -296,19 +308,19 @@ export default function TestLeaderboardScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (Colors: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: Colors.background,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.cardBackground,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: Colors.muted,
   },
   backButton: {
     padding: 8,
@@ -320,11 +332,11 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#111827',
+    color: Colors.textPrimary,
   },
   headerSubtitle: {
     fontSize: 12,
-    color: '#6B7280',
+    color: Colors.textSubtle,
     marginTop: 2,
   },
   calendarButton: {
@@ -348,18 +360,18 @@ const styles = StyleSheet.create({
   statNumber: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: Colors.white,
     marginBottom: 4,
   },
   statLabel: {
     fontSize: 12,
-    color: '#FFFFFF',
+    color: Colors.white,
     opacity: 0.9,
   },
   periodContainer: {
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.cardBackground,
   },
   periodChip: {
     paddingHorizontal: 16,
@@ -377,7 +389,7 @@ const styles = StyleSheet.create({
     color: Colors.textSubtle,
   },
   periodTextActive: {
-    color: '#FFFFFF',
+    color: Colors.white,
   },
   topPerformersContainer: {
     paddingHorizontal: 20,
@@ -471,7 +483,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    shadowColor: '#000',
+    shadowColor: Colors.shadow,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 2,

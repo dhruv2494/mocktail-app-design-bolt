@@ -2,16 +2,25 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Bell, Search, Play, Clock, Users, Award, BookOpen, FileText } from 'lucide-react-native';
+import { Bell, Search, Play, Clock, Users, Award, BookOpen, FileText, User } from 'lucide-react-native';
 import { router } from 'expo-router';
-import { Colors } from '@/theme';
+import { getTheme } from '@/theme';
+import { useTheme } from '@/contexts/ThemeContext';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { useGetProfileQuery } from '@/store/api/userApi';
 
 export default function HomeScreen() {
+  const { isDarkMode } = useTheme();
+  const Colors = getTheme(isDarkMode);
+  const { t } = useLanguage();
+  const { data: profileData } = useGetProfileQuery();
+  const userProfile = profileData?.data;
+  
   const quickActions = [
-    { id: 1, title: 'Free Tests', icon: Play, color: Colors.primaryLight, route: '/test/quiz' },
-    { id: 2, title: 'PYQs', icon: Clock, color: Colors.accent, route: '/test/quiz' },
-    { id: 3, title: 'Test Series', icon: BookOpen, color: Colors.primary, route: '/test-series' },
-    { id: 4, title: 'Study PDFs', icon: FileText, color: Colors.primaryLight, route: '/pdfs' },
+    { id: 1, title: t.freeTests.title, icon: Play, color: Colors.success, route: '/test-series' },
+    { id: 2, title: t.freeTests.pyqs, icon: Clock, color: Colors.accent, route: '/test-series' },
+    { id: 3, title: t.testSeries.title, icon: BookOpen, color: Colors.primary, route: '/test-series' },
+    { id: 4, title: t.pdfs.title, icon: FileText, color: Colors.primaryLight, route: '/pdfs' },
   ];
 
   const recentTests = [
@@ -20,19 +29,29 @@ export default function HomeScreen() {
     { id: 3, title: 'Deputy Section Officer', score: 91, total: 100, date: '1 week ago' },
   ];
 
+  const styles = getStyles(Colors);
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.headerLeft}>
-            <Image 
-              source={{ uri: 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&dpr=2' }}
-              style={styles.avatar}
-            />
+            {userProfile?.avatarUrl ? (
+              <Image 
+                source={{ uri: userProfile.avatarUrl }}
+                style={styles.avatar}
+              />
+            ) : (
+              <View style={[styles.avatar, styles.avatarPlaceholder]}>
+                <User size={24} color={Colors.white} />
+              </View>
+            )}
             <View>
-              <Text style={styles.greeting}>Good Morning!</Text>
-              <Text style={styles.userName}>John Doe</Text>
+              <Text style={styles.greeting}>{t.home.goodMorning}</Text>
+              <Text style={styles.userName}>
+                {userProfile?.fullName || userProfile?.username || 'Student'}
+              </Text>
             </View>
           </View>
           <View style={styles.headerRight}>
@@ -52,8 +71,8 @@ export default function HomeScreen() {
             style={styles.statCard}
           >
             <Award size={32} color="#FFFFFF" />
-            <Text style={styles.statNumber}>1,247</Text>
-            <Text style={styles.statLabel}>Total Score</Text>
+            <Text style={styles.statNumber}>{userProfile?.stats?.totalScore || 0}</Text>
+            <Text style={styles.statLabel}>{t.home.totalScore}</Text>
           </LinearGradient>
           
           <LinearGradient
@@ -61,20 +80,20 @@ export default function HomeScreen() {
             style={styles.statCard}
           >
             <Users size={32} color="#FFFFFF" />
-            <Text style={styles.statNumber}>15th</Text>
-            <Text style={styles.statLabel}>Rank</Text>
+            <Text style={styles.statNumber}>#{userProfile?.stats?.rank || '--'}</Text>
+            <Text style={styles.statLabel}>{t.home.rank}</Text>
           </LinearGradient>
         </View>
 
         {/* Quick Actions */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Quick Actions</Text>
+          <Text style={styles.sectionTitle}>{t.home.quickActions}</Text>
           <View style={styles.quickActionsGrid}>
             {quickActions.map((action) => (
               <TouchableOpacity
                 key={action.id}
                 style={styles.quickActionCard}
-                onPress={() => router.push(action.route)}
+                onPress={() => router.push(action.route as any)}
               >
                 <View style={[styles.quickActionIcon, { backgroundColor: `${action.color}20` }]}>
                   <action.icon size={24} color={action.color} />
@@ -88,9 +107,9 @@ export default function HomeScreen() {
         {/* Recent Tests */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Recent Tests</Text>
+            <Text style={styles.sectionTitle}>{t.home.recentTests}</Text>
             <TouchableOpacity>
-              <Text style={styles.seeAllText}>See All</Text>
+              <Text style={styles.seeAllText}>{t.common.seeAll}</Text>
             </TouchableOpacity>
           </View>
           
@@ -114,7 +133,7 @@ export default function HomeScreen() {
 
         {/* Featured Test Series */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Featured Test Series</Text>
+          <Text style={styles.sectionTitle}>{t.home.featuredTestSeries}</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             <TouchableOpacity style={styles.featuredCard}>
               <LinearGradient
@@ -144,7 +163,7 @@ export default function HomeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (Colors: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,
@@ -167,6 +186,11 @@ const styles = StyleSheet.create({
     height: 48,
     borderRadius: 24,
     marginRight: 12,
+  },
+  avatarPlaceholder: {
+    backgroundColor: Colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   greeting: {
     fontSize: 14,

@@ -1,177 +1,103 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Colors } from '@/theme';
-import logo from '@/assets/images/MockTale.jpg';
 import { router } from 'expo-router';
 import Toast from 'react-native-toast-message';
+import { useForgotPasswordMutation } from '@/store/api/authApi';
+import { useDispatch } from 'react-redux';
+import { setPendingVerification, setError } from '@/store/slices/authSlice';
+import { AuthLayout, FormInput, GradientButton, LinkText } from '@/components/shared';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function ForgotPasswordScreen() {
   const [email, setEmail] = useState('');
-  const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
+  
+  const dispatch = useDispatch();
+  const [forgotPassword, { isLoading }] = useForgotPasswordMutation();
+  const { t } = useLanguage();
 
-  const handleReset = () => {
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
+  const validateForm = () => {
+    if (!email.trim()) {
+      Toast.show({
+        type: 'error',
+        text1: t.common.error,
+        text2: t.auth.validation.emailRequired,
+      });
+      return false;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      Toast.show({
+        type: 'error',
+        text1: t.common.error,
+        text2: t.auth.validation.invalidEmail,
+      });
+      return false;
+    }
+    return true;
+  };
+
+  const handleReset = async () => {
+    if (!validateForm()) return;
+
+    try {
+      await forgotPassword({
+        email: email.trim().toLowerCase(),
+      }).unwrap();
+
+      dispatch(setPendingVerification({ 
+        email: email.trim().toLowerCase(), 
+        isOTPSent: true,
+        type: 'forgot-password'
+      }));
       setSent(true);
+
       Toast.show({
         type: 'success',
-        text1: 'Email sent',
-        text2: 'Check your email for the reset code.',
+        text1: t.auth.resetEmailSent,
+        text2: t.auth.resetEmailSentMessage,
       });
-      router.push('/(auth)/otp-verify');
-    }, 1500);
+
+      setTimeout(() => router.push('/(auth)/otp-verify'), 1000);
+    } catch (error: any) {
+      const errorMessage = error?.data?.message || t.auth.resetEmailFailed;
+      dispatch(setError(errorMessage));
+      Toast.show({
+        type: 'error',
+        text1: t.auth.resetEmailFailed,
+        text2: errorMessage,
+      });
+    }
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={{ flex: 1 }}
-        >
-          {/* Logo/Avatar */}
-          <View style={styles.logoContainer}>
-            <Image source={logo} style={styles.avatar} />
-            <Text style={styles.title}>Forgot Password</Text>
-            <Text style={styles.subtitle}>Enter your email to reset your password</Text>
-          </View>
+    <AuthLayout 
+      title={t.auth.forgotPassword} 
+      subtitle={t.auth.forgotPasswordSubtitle}
+    >
+      <FormInput
+        label={t.auth.email}
+        placeholder={t.auth.enterEmail}
+        keyboardType="email-address"
+        autoCapitalize="none"
+        value={email}
+        onChangeText={setEmail}
+        editable={!sent}
+      />
 
-          <View style={styles.formContainer}>
-            <Text style={styles.label}>Email</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter your email"
-              placeholderTextColor={Colors.textSubtle || '#999'}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              value={email}
-              onChangeText={setEmail}
-              editable={!sent}
-            />
+      <GradientButton
+        title={sent ? t.auth.emailSent : isLoading ? t.auth.sending : t.auth.resetPassword}
+        onPress={handleReset}
+        disabled={isLoading || sent || !email}
+        loading={isLoading}
+      />
 
-            <TouchableOpacity
-              style={styles.resetButton}
-              onPress={handleReset}
-              disabled={loading || sent || !email}
-            >
-              <LinearGradient
-                colors={[Colors.primary, Colors.primaryLight]}
-                style={styles.resetGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-              >
-                <Text style={styles.resetButtonText}>
-                  {sent ? 'Email Sent!' : loading ? 'Sending...' : 'Reset Password'}
-                </Text>
-              </LinearGradient>
-            </TouchableOpacity>
-
-            <View style={styles.subRoute}>
-              <Text>Remember your password?</Text>
-              <TouchableOpacity onPress={() => router.push('/(auth)/login')}>
-                <Text style={styles.subRouteText}>Login</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </KeyboardAvoidingView>
-      </ScrollView>
-    </SafeAreaView>
+      <LinkText
+        prefix={t.auth.rememberPassword}
+        linkText={t.auth.login}
+        onPress={() => router.push('/(auth)/login')}
+      />
+    </AuthLayout>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
-  scrollContainer: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    padding: 24,
-  },
-  logoContainer: {
-    alignItems: 'center',
-    marginBottom: 32,
-  },
-  avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    marginBottom: 12,
-    borderWidth: 2,
-    borderColor: Colors.primaryLight,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: Colors.textPrimary,
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: Colors.textSubtle,
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  formContainer: {
-    backgroundColor: Colors.cardBackground,
-    borderRadius: 16,
-    padding: 24,
-    shadowColor: Colors.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.07,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  label: {
-    fontSize: 14,
-    color: Colors.textPrimary,
-    marginBottom: 6,
-    marginTop: 8,
-    fontWeight: '500',
-  },
-  input: {
-    height: 44,
-    borderWidth: 1,
-    borderColor: Colors.primaryLight,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    marginBottom: 8,
-    backgroundColor: Colors.background,
-    color: Colors.textPrimary,
-  },
-  resetButton: {
-    borderRadius: 8,
-    overflow: 'hidden',
-    marginTop: 16,
-  },
-  resetGradient: {
-    paddingVertical: 14,
-    alignItems: 'center',
-    borderRadius: 8,
-  },
-  resetButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  subRoute: {
-    borderRadius: 8,
-    overflow: 'hidden',
-    marginTop: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  subRouteText: {
-    color: Colors.textLink,
-    fontSize: 16,
-    fontWeight: '600',
-    marginLeft: 5,
-  },
-});
 

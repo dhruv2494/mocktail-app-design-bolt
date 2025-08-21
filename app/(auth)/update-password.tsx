@@ -2,29 +2,94 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Colors } from '@/theme';
-import logo from '@/assets/images/MockTale.jpg';
+import { getTheme } from '@/theme';
+import { useTheme } from '@/contexts/ThemeContext';
+const logo = require('@/assets/images/MockTale.jpg');
 import { router } from 'expo-router';
 import Toast from 'react-native-toast-message';
+import { useResetPasswordMutation } from '@/store/api/authApi';
+import { useSelector, useDispatch } from 'react-redux';
+import { RootState } from '@/store/store';
+import { clearPendingVerification, setError } from '@/store/slices/authSlice';
 
 export default function UpdatePasswordScreen() {
   const [password, setPassword] = useState('');
+  const { isDarkMode } = useTheme();
+  const Colors = getTheme(isDarkMode);
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [loading, setLoading] = useState(false);
   const [updated, setUpdated] = useState(false);
 
-  const handleUpdate = () => {
-    setLoading(true);
-    setTimeout(() => {
-        Toast.show({
-            type: 'success',
-            text1: 'Password updated',
-            text2: 'Your password has been updated.',
-          });
-      setLoading(false);
-      setUpdated(true);
-    }, 1500);
+  const dispatch = useDispatch();
+  const { pendingVerification } = useSelector((state: RootState) => state.auth);
+  const [resetPassword, { isLoading }] = useResetPasswordMutation();
+
+  const validateForm = () => {
+    if (!password.trim()) {
+      Toast.show({
+        type: 'error',
+        text1: 'Validation Error',
+        text2: 'Password is required',
+      });
+      return false;
+    }
+    if (password.length < 6) {
+      Toast.show({
+        type: 'error',
+        text1: 'Validation Error',
+        text2: 'Password must be at least 6 characters',
+      });
+      return false;
+    }
+    if (password !== confirmPassword) {
+      Toast.show({
+        type: 'error',
+        text1: 'Validation Error',
+        text2: 'Passwords do not match',
+      });
+      return false;
+    }
+    if (!pendingVerification.email) {
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'No reset session found. Please try again.',
+      });
+      return false;
+    }
+    return true;
   };
+
+  const handleUpdate = async () => {
+    if (!validateForm()) return;
+
+    try {
+      await resetPassword({
+        email: pendingVerification.email!,
+        newPassword: password,
+      }).unwrap();
+
+      dispatch(clearPendingVerification());
+      setUpdated(true);
+
+      Toast.show({
+        type: 'success',
+        text1: 'Password Updated Successfully',
+        text2: 'You can now login with your new password.',
+      });
+
+      setTimeout(() => router.push('/(auth)/login'), 1500);
+    } catch (error: any) {
+      const errorMessage = error?.data?.message || 'Failed to update password';
+      dispatch(setError(errorMessage));
+      Toast.show({
+        type: 'error',
+        text1: 'Update Failed',
+        text2: errorMessage,
+      });
+    }
+  };
+
+  const styles = getStyles(Colors);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -66,7 +131,7 @@ export default function UpdatePasswordScreen() {
             <TouchableOpacity
               style={styles.updateButton}
               onPress={handleUpdate}
-              disabled={loading || updated || !password || password !== confirmPassword}
+              disabled={isLoading || updated || !password || password !== confirmPassword}
             >
               <LinearGradient
                 colors={[Colors.primary, Colors.primaryLight]}
@@ -75,7 +140,7 @@ export default function UpdatePasswordScreen() {
                 end={{ x: 1, y: 0 }}
               >
                 <Text style={styles.updateButtonText}>
-                  {updated ? 'Updated!' : loading ? 'Updating...' : 'Update Password'}
+                  {updated ? 'Updated!' : isLoading ? 'Updating...' : 'Update Password'}
                 </Text>
               </LinearGradient>
             </TouchableOpacity>
@@ -93,7 +158,7 @@ export default function UpdatePasswordScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (Colors: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,

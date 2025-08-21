@@ -1,216 +1,208 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Colors } from '@/theme';
-import logo from '@/assets/images/MockTale.jpg';
+import { View, Text } from 'react-native';
 import { router } from 'expo-router';
 import Toast from 'react-native-toast-message';
+import { useVerifyOTPMutation, useLoginMutation } from '@/store/api/authApi';
+import { useSelector, useDispatch } from 'react-redux';
+import { RootState } from '@/store/store';
+import { clearPendingVerification, setError, setCredentials } from '@/store/slices/authSlice';
+import { AuthLayout, FormInput, GradientButton, LinkText } from '@/components/shared';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { API_CONFIG } from '@/config/constants';
 
 export default function OtpVerifyScreen() {
   const [otp, setOtp] = useState('');
-  const [loading, setLoading] = useState(false);
   const [resent, setResent] = useState(false);
   const [verified, setVerified] = useState(false);
 
-  const handleVerify = () => {
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      // Simulate OTP check: success if otp === '123456', else error
-      setVerified(true);
-      Toast.show({
-        type: 'success',
-        text1: 'OTP Verified',
-        text2: 'You may now update your password.',
-      });
-        setTimeout(() => router.push('/(auth)/update-password'), 1000);
+  const dispatch = useDispatch();
+  const { pendingVerification } = useSelector((state: RootState) => state.auth);
+  const [verifyOTP, { isLoading }] = useVerifyOTPMutation();
+  const [login] = useLoginMutation();
+  const { t } = useLanguage();
 
-    }, 1500);
+  const validateForm = () => {
+    if (!otp.trim()) {
+      Toast.show({
+        type: 'error',
+        text1: t.common.error,
+        text2: t.auth.validation.otpRequired,
+      });
+      return false;
+    }
+    if (otp.length !== 4) {
+      Toast.show({
+        type: 'error',
+        text1: t.common.error,
+        text2: t.auth.validation.otpLength,
+      });
+      return false;
+    }
+    if (!pendingVerification.email) {
+      Toast.show({
+        type: 'error',
+        text1: t.common.error,
+        text2: t.auth.validation.noPendingVerification,
+      });
+      return false;
+    }
+    return true;
   };
 
+  const handleVerify = async () => {
+    if (!validateForm()) return;
 
-  const handleResend = () => {
+    try {
+      await verifyOTP({
+        email: pendingVerification.email!,
+        otp: otp.trim(),
+      }).unwrap();
+
+      // Store the type before clearing verification state
+      const verificationType = pendingVerification.type;
+      
+      setVerified(true);
+
+      Toast.show({
+        type: 'success',
+        text1: t.auth.otpVerifiedSuccess,
+        text2: verificationType === 'forgot-password' 
+          ? 'OTP verified. You can now reset your password.' 
+          : t.auth.accountVerified,
+      });
+
+      // Redirect based on verification type
+      if (verificationType === 'forgot-password') {
+        // Don't clear verification for forgot password - update-password screen needs the email
+        setTimeout(() => router.push('/(auth)/update-password'), 1000);
+      } else if (verificationType === 'login-verification') {
+        // For login verification, automatically log the user in
+        try {
+          const loginResult = await login({
+            email: pendingVerification.email!,
+            password: pendingVerification.password!,
+          }).unwrap();
+
+          dispatch(setCredentials({ token: loginResult.token }));
+          dispatch(clearPendingVerification());
+
+          Toast.show({
+            type: 'success',
+            text1: 'Login Successful',
+            text2: 'Welcome back! You are now logged in.',
+          });
+
+          setTimeout(() => router.push('/'), 1000);
+        } catch (loginError) {
+          // If auto-login fails, redirect to login screen
+          dispatch(clearPendingVerification());
+          Toast.show({
+            type: 'error',
+            text1: 'Email Verified',
+            text2: 'Please login again to continue.',
+          });
+          setTimeout(() => router.push('/(auth)/login'), 1000);
+        }
+      } else {
+        // For new registrations, clear verification and redirect to dashboard
+        dispatch(clearPendingVerification());
+        setTimeout(() => router.push('/'), 1000);
+      }
+    } catch (error: any) {
+      const errorMessage = error?.data?.message || t.auth.otpVerificationFailed;
+      dispatch(setError(errorMessage));
+      Toast.show({
+        type: 'error',
+        text1: t.auth.verificationFailed,
+        text2: errorMessage,
+      });
+    }
+  };
+
+  const handleResend = async () => {
+    if (!pendingVerification.email) return;
+    
     setResent(true);
-    Toast.show({
-      type: 'info',
-      text1: 'OTP Resent',
-      text2: 'A new OTP has been sent to your email.',
-    });
-    setTimeout(() => setResent(false), 2000);
+    
+    try {
+      // Call appropriate resend API based on verification type
+      if (pendingVerification.type === 'forgot-password') {
+        // For forgot password, call forgot password API again
+        await fetch(`${API_CONFIG.BASE_URL}/api/users/forgotPassword`, {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'ngrok-skip-browser-warning': 'true'
+          },
+          body: JSON.stringify({ email: pendingVerification.email })
+        });
+      } else {
+        // For registration or login verification, call resend OTP API
+        await fetch(`${API_CONFIG.BASE_URL}/api/users/resend-otp`, {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'ngrok-skip-browser-warning': 'true'
+          },
+          body: JSON.stringify({ email: pendingVerification.email })
+        });
+      }
+      
+      Toast.show({
+        type: 'success',
+        text1: t.auth.otpResent,
+        text2: t.auth.newOtpSent,
+      });
+    } catch (error) {
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Failed to resend OTP. Please try again.',
+      });
+    }
+    
+    setTimeout(() => setResent(false), 3000);
   };
 
 
   return (
-    <>
-      <SafeAreaView style={styles.container}>
-        <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
-          <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            style={{ flex: 1 }}
-          >
-            {/* Logo/Avatar */}
-            <View style={styles.logoContainer}>
-              <Image source={logo} style={styles.avatar} />
-              <Text style={styles.title}>OTP Verification</Text>
-              <Text style={styles.subtitle}>Enter the code sent to your email</Text>
-            </View>
+    <AuthLayout 
+      title={t.auth.otpVerification} 
+      subtitle={t.auth.otpSubtitle}
+    >
+      <FormInput
+        label={t.auth.otpCode}
+        placeholder={t.auth.enterOtp}
+        keyboardType="number-pad"
+        value={otp}
+        onChangeText={setOtp}
+        maxLength={4}
+        editable={!verified}
+        style={{ letterSpacing: 6, textAlign: 'center', fontSize: 20, fontWeight: '600' }}
+      />
 
-            <View style={styles.formContainer}>
-              <Text style={styles.label}>OTP Code</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Enter OTP"
-                placeholderTextColor={Colors.textSubtle || '#999'}
-                keyboardType="number-pad"
-                value={otp}
-                onChangeText={setOtp}
-                maxLength={6}
-                editable={!verified}
-              />
+      <GradientButton
+        title={verified ? t.auth.verified : isLoading ? t.auth.verifying : t.auth.verify}
+        onPress={handleVerify}
+        disabled={isLoading || verified}
+        loading={isLoading}
+      />
 
-              <TouchableOpacity
-                style={styles.verifyButton}
-                onPress={handleVerify}
-              >
-                <LinearGradient
-                  colors={[Colors.primary, Colors.primaryLight]}
-                  style={styles.verifyGradient}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                >
-                  <Text style={styles.verifyButtonText}>
-                    {verified ? 'Verified!' : loading ? 'Verifying...' : 'Verify'}
-                  </Text>
-                </LinearGradient>
-              </TouchableOpacity>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 12 }}>
+        <Text>{t.auth.didNotReceiveCode}</Text>
+        <LinkText
+          linkText={resent ? t.auth.otpSent : t.auth.resendOtp}
+          onPress={handleResend}
+          disabled={resent}
+          style={[{ marginLeft: 5 }, resent ? { opacity: 0.5 } : undefined]}
+        />
+      </View>
 
-              <View style={styles.resendRow}>
-                <Text>Didn't receive code?</Text>
-                <TouchableOpacity onPress={handleResend} disabled={resent}>
-                  <Text style={[styles.resendText, resent && { opacity: 0.5 }]}>Resend OTP</Text>
-                </TouchableOpacity>
-              </View>
-
-              <View style={styles.subRoute}>
-                <Text>Back to</Text>
-                <TouchableOpacity onPress={() => router.push('/(auth)/login')}>
-                  <Text style={styles.subRouteText}>Login</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </KeyboardAvoidingView>
-        </ScrollView>
-      </SafeAreaView>
-    </>
+      <LinkText
+        prefix={t.auth.backTo}
+        linkText={t.auth.login}
+        onPress={() => router.push('/(auth)/login')}
+      />
+    </AuthLayout>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
-  scrollContainer: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    padding: 24,
-  },
-  logoContainer: {
-    alignItems: 'center',
-    marginBottom: 32,
-  },
-  avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    marginBottom: 12,
-    borderWidth: 2,
-    borderColor: Colors.primaryLight,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: Colors.textPrimary,
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: Colors.textSubtle,
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  formContainer: {
-    backgroundColor: Colors.cardBackground,
-    borderRadius: 16,
-    padding: 24,
-    shadowColor: Colors.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.07,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  label: {
-    fontSize: 14,
-    color: Colors.textPrimary,
-    marginBottom: 6,
-    marginTop: 8,
-    fontWeight: '500',
-  },
-  input: {
-    height: 44,
-    borderWidth: 1,
-    borderColor: Colors.primaryLight,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    marginBottom: 8,
-    backgroundColor: Colors.background,
-    color: Colors.textPrimary,
-    letterSpacing: 6,
-    textAlign: 'center',
-    fontSize: 20,
-    fontWeight: '600',
-  },
-  verifyButton: {
-    borderRadius: 8,
-    overflow: 'hidden',
-    marginTop: 16,
-  },
-  verifyGradient: {
-    paddingVertical: 14,
-    alignItems: 'center',
-    borderRadius: 8,
-  },
-  verifyButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  resendRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 12,
-    gap: 5,
-  },
-  resendText: {
-    color: Colors.textLink,
-    fontSize: 15,
-    fontWeight: '600',
-    marginLeft: 5,
-  },
-  subRoute: {
-    borderRadius: 8,
-    overflow: 'hidden',
-    marginTop: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  subRouteText: {
-    color: Colors.textLink,
-    fontSize: 16,
-    fontWeight: '600',
-    marginLeft: 5,
-  },
-});
