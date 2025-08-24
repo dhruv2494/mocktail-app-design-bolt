@@ -1,48 +1,49 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, Star, Clock, Play, Lock, Users, Gift, Award, BookOpen, ChevronRight } from 'lucide-react-native';
+import { ArrowLeft, Star, Clock, Play, Lock, Users, Gift, Award, BookOpen, ChevronRight, Folder } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { getTheme } from '@/theme';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { 
-  useGetTestSeriesByIdQuery
-} from '@/store/api/testSeriesApi';
+  useGetDynamicTestSeriesByUuidQuery,
+  DynamicTestSeries,
+  DynamicCategory,
+  convertDynamicCategoryToTestFormat
+} from '@/store/api/dynamicHierarchyApi';
 import { SkeletonLoader } from '@/components/shared/SkeletonLoader';
 import Toast from 'react-native-toast-message';
 
 export default function SeriesDetailScreen() {
-  const { seriesId, title } = useLocalSearchParams<{ seriesId: string; title: string }>();
+  const { seriesUuid, title } = useLocalSearchParams<{ seriesUuid: string; title: string }>();
   
   const { isDarkMode } = useTheme();
   const { t } = useLanguage();
   const Colors = getTheme(isDarkMode);
 
-  // API calls using existing APIs
+  // API calls using new dynamic hierarchy API
   const {
     data: seriesData,
     error: seriesError,
     isLoading: seriesLoading,
     refetch: refetchSeries,
-  } = useGetTestSeriesByIdQuery(seriesId!, {
-    skip: !seriesId,
+  } = useGetDynamicTestSeriesByUuidQuery(seriesUuid!, {
+    skip: !seriesUuid,
   });
 
-  // No longer need separate tests API call - tests are included in series data
+  // Extract series and categories data
   const series = seriesData?.data;
-  const tests = series?.tests || [];
+  const categories = series?.categories || [];
 
-  const handleTestSelect = (testId: string, testTitle: string) => {
-    // Find the test object to get the UUID
-    const test = tests.find(t => t.id === testId);
+  const handleCategorySelect = (categoryUuid: string, categoryTitle: string) => {
+    // Navigate to category detail to show proper hierarchy navigation
     router.push({
-      pathname: '/test/quiz',
+      pathname: '/test/category-detail',
       params: {
-        testId: test?.uuid || testId, // Use UUID if available, fallback to ID
-        title: testTitle,
-        seriesId: seriesId!,
-        seriesTitle: title!,
+        categoryUuid: categoryUuid,
+        categoryName: categoryTitle,
+        seriesUuid: seriesUuid!,
       },
     });
   };
@@ -62,52 +63,54 @@ export default function SeriesDetailScreen() {
   };
 
   const handleStartFreeTest = () => {
-    // Find a free test to start
-    const freeTest = tests.find(test => test.is_free && !test.is_locked);
-    if (freeTest) {
-      handleTestSelect(freeTest.id, freeTest.title);
+    // In dynamic hierarchy, we navigate to first category that might have free content
+    if (categories && categories.length > 0) {
+      // Navigate to the first category to explore content
+      router.push({
+        pathname: '/test/category-detail',
+        params: {
+          categoryUuid: categories[0].uuid,
+          categoryName: categories[0].name,
+          seriesUuid: series.uuid,
+        },
+      });
     } else {
       Toast.show({
         type: 'error',
-        text1: 'No Free Tests Available',
+        text1: 'No Categories Available',
         text2: 'No free tests are available in this series.',
       });
     }
   };
 
-  const renderTestCard = (test: any, index: number) => (
+  const renderCategoryCard = (category: DynamicCategory, index: number) => (
     <TouchableOpacity
-      key={test.id}
-      style={[styles.categoryCard, test.is_locked && styles.lockedTestCard]}
-      onPress={() => test.is_locked ? null : handleTestSelect(test.id, test.title)}
-      disabled={test.is_locked}
+      key={category.uuid}
+      style={styles.categoryCard}
+      onPress={() => handleCategorySelect(category.uuid, category.name)}
     >
       <View style={styles.categoryHeader}>
-        <View style={[styles.categoryIcon, { backgroundColor: test.is_free ? Colors.success : Colors.primaryLight }]}>
-          {test.is_locked ? (
-            <Lock size={20} color={Colors.white} />
-          ) : (
-            <Play size={20} color={Colors.white} />
-          )}
+        <View style={[styles.categoryIcon, { backgroundColor: Colors.primary }]}>
+          <Folder size={20} color={Colors.white} />
         </View>
         <View style={styles.categoryInfo}>
-          <Text style={[styles.categoryName, { color: test.is_locked ? Colors.textSubtle : Colors.textPrimary }]}>
-            {test.title}
+          <Text style={[styles.categoryName, { color: Colors.textPrimary }]}>
+            {category.name}
           </Text>
           <View style={styles.categoryStats}>
             <Text style={[styles.categoryStatsText, { color: Colors.textSubtle }]}>
-              {test.total_questions} questions • {test.duration} minutes
-              {test.is_free && <Text style={{ color: Colors.success }}> • Free</Text>}
-              {test.user_attempts > 0 && <Text> • Attempted {test.user_attempts} times</Text>}
+              {category.has_subcategories 
+                ? `${category.subcategories_count} subcategories`
+                : `${category.questions_count} questions`}
             </Text>
           </View>
-          {test.best_score && (
-            <Text style={[styles.bestScore, { color: Colors.warning }]}>
-              Best Score: {test.best_score}%
+          {category.description && (
+            <Text style={[styles.categoryDescription, { color: Colors.textSubtle }]}>
+              {category.description}
             </Text>
           )}
         </View>
-        {!test.is_locked && <ChevronRight size={20} color={Colors.textSubtle} />}
+        <ChevronRight size={20} color={Colors.textSubtle} />
       </View>
     </TouchableOpacity>
   );
@@ -281,7 +284,7 @@ export default function SeriesDetailScreen() {
             </View>
 
             <View style={styles.buttonContainer}>
-              {tests.some(test => test.is_free) && !(series.is_subscribed || series.is_purchased) && (
+              {series.pricing_type === 'free' && !(series.is_subscribed || series.is_purchased) && (
                 <TouchableOpacity 
                   style={[styles.freeTestButton, { borderColor: Colors.primaryLight }]}
                   onPress={handleStartFreeTest}
@@ -297,10 +300,10 @@ export default function SeriesDetailScreen() {
                 <TouchableOpacity 
                   style={[styles.continueButton, { backgroundColor: Colors.success }]}
                   onPress={() => {
-                    // Navigate to first available test
-                    if (tests.length > 0) {
-                      const firstTest = tests.find(test => !test.is_locked) || tests[0];
-                      handleTestSelect(firstTest.id, firstTest.title);
+                    // Navigate to first available category
+                    if (categories.length > 0) {
+                      const firstCategory = categories[0];
+                      handleCategorySelect(firstCategory.uuid, firstCategory.name);
                     }
                   }}
                 >
@@ -327,25 +330,25 @@ export default function SeriesDetailScreen() {
         <View style={styles.categoriesSection}>
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: Colors.textPrimary }]}>
-              Available Tests
+              Available Categories
             </Text>
             <Text style={[styles.sectionSubtitle, { color: Colors.textSubtle }]}>
-              {tests.length} tests available
+              {categories.length} categories available
             </Text>
           </View>
 
-          {tests.length === 0 ? (
+          {categories.length === 0 ? (
             <View style={styles.emptyState}>
               <BookOpen size={48} color={Colors.textSubtle} />
               <Text style={[styles.emptyTitle, { color: Colors.textPrimary }]}>
-                No tests available
+                No categories available
               </Text>
               <Text style={[styles.emptyMessage, { color: Colors.textSubtle }]}>
-                Tests will be added soon
+                Categories will be added soon
               </Text>
             </View>
           ) : (
-            tests.map((test, index) => renderTestCard(test, index))
+            categories.map((category, index) => renderCategoryCard(category, index))
           )}
         </View>
       </ScrollView>
@@ -536,6 +539,11 @@ const getStyles = (Colors: any) => StyleSheet.create({
   },
   categoryStatsText: {
     fontSize: 12,
+  },
+  categoryDescription: {
+    fontSize: 12,
+    marginTop: 4,
+    lineHeight: 16,
   },
   bestScore: {
     fontSize: 12,

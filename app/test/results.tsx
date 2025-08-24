@@ -15,7 +15,7 @@ export default function TestResultsScreen() {
   console.log('📊 Results screen mounted');
   const params = useLocalSearchParams();
   console.log('📊 Received params:', params);
-  const { resultId, sessionId, score, percentage, passed, testTitle, correctAnswers, wrongAnswers, unanswered } = params;
+  const { resultId, sessionId, score, percentage, passed, testTitle, correctAnswers, wrongAnswers, unanswered, categoryUuid, categoryName } = params;
   
   const [activeTab, setActiveTab] = useState<'overview' | 'analysis'>('overview');
   const { isDarkMode } = useTheme();
@@ -112,6 +112,8 @@ export default function TestResultsScreen() {
         sessionId: sessionId || 'mock-session',
         resultId: resultId || 'mock-result',
         testTitle: testTitle || 'Test Solutions',
+        categoryUuid: categoryUuid,
+        categoryName: categoryName,
       },
     });
   };

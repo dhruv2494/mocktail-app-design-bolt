@@ -27,6 +27,7 @@ import { getTheme } from '@/theme';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useReviewAnswersQuery } from '@/store/api/quizApi';
+import { useGetDynamicSolutionsQuery } from '@/store/api/dynamicHierarchyApi';
 
 interface Question {
   id: number;
@@ -45,7 +46,10 @@ export default function SolutionsScreen() {
   console.log('📚 Solutions screen mounted');
   const params = useLocalSearchParams();
   console.log('📚 Received params:', params);
-  const { sessionId, resultId, testTitle } = params;
+  const { sessionId, resultId, testTitle, categoryUuid, categoryName } = params;
+  
+  // Determine if this is a category-based quiz
+  const isCategoryQuiz = sessionId === 'category-quiz' && categoryUuid;
   
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const { isDarkMode } = useTheme();
@@ -65,7 +69,7 @@ export default function SolutionsScreen() {
   // Use real API data
   const useMockData = false;
   
-  // Fetch review data from API (when available)
+  // Fetch review data from API for session-based quizzes
   const { 
     data: reviewData, 
     isLoading: loadingReview,
@@ -73,7 +77,31 @@ export default function SolutionsScreen() {
   } = useReviewAnswersQuery({
     session_id: sessionId as string,
   }, {
-    skip: !sessionId || useMockData,
+    skip: !sessionId || useMockData || isCategoryQuiz,
+  });
+
+  // Fetch solutions for category-based quizzes
+  const { 
+    data: categoryData, 
+    isLoading: loadingCategory,
+    error: categoryError 
+  } = useGetDynamicSolutionsQuery({
+    categoryUuid: categoryUuid as string,
+    language: 'english',
+  }, {
+    skip: !isCategoryQuiz || useMockData,
+  });
+
+  // Combine loading and error states
+  const isLoading = isCategoryQuiz ? loadingCategory : loadingReview;
+  const error = isCategoryQuiz ? categoryError : reviewError;
+  
+  console.log('📚 API Status:', {
+    isCategoryQuiz,
+    isLoading,
+    hasError: !!error,
+    hasReviewData: !!reviewData,
+    hasCategoryData: !!categoryData,
   });
 
   // Mock data for testing
@@ -127,10 +155,27 @@ export default function SolutionsScreen() {
     });
   };
 
-  // Use mock data or real data
+  // Transform category solutions to the same format
+  const transformCategorySolutions = (solutions: any[]) => {
+    return solutions.map((solution, index) => ({
+      id: solution.id || index + 1,
+      question: solution.question_text || 'No question text',
+      options: solution.options ? [solution.options.A, solution.options.B, solution.options.C, solution.options.D] : [],
+      correctAnswer: solution.correct_answer ? ['A', 'B', 'C', 'D'].indexOf(solution.correct_answer) : 0,
+      userAnswer: undefined, // No user answer for category-based quizzes 
+      explanation: solution.explanation || 'No explanation available.',
+      subject: 'General',
+      difficulty: 'Medium', // Default difficulty for category solutions
+      timeSpent: 0, // No time tracking for category-based quizzes
+    }));
+  };
+
+  // Use appropriate data source based on quiz type
   const questions = useMockData 
     ? mockQuestions 
-    : transformQuestions(reviewData?.data?.questions || []);
+    : isCategoryQuiz 
+      ? transformCategorySolutions(categoryData?.data?.solutions || [])
+      : transformQuestions(reviewData?.data?.questions || []);
   
   console.log('📚 Questions loaded:', questions.length, 'questions');
 

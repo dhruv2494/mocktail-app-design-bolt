@@ -6,7 +6,7 @@ import { router } from 'expo-router';
 import { getTheme } from '@/theme';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { useGetTestSeriesQuery, TestSeries } from '@/store/api/testSeriesApi';
+import { useGetDynamicTestSeriesQuery, DynamicTestSeries, convertDynamicSeriesToOldFormat } from '@/store/api/dynamicHierarchyApi';
 import { SkeletonLoader } from '@/components/shared/SkeletonLoader';
 
 export default function TestSeriesScreen() {
@@ -17,35 +17,33 @@ export default function TestSeriesScreen() {
   const { t } = useLanguage();
   const Colors = getTheme(isDarkMode);
 
-  // API calls using existing working API
+  // API calls using new dynamic hierarchy API
   const {
     data: testSeriesResponse,
     error: testSeriesError,
     isLoading: testSeriesLoading,
     refetch: refetchTestSeries,
-  } = useGetTestSeriesQuery({
+  } = useGetDynamicTestSeriesQuery({
     page,
     limit: 20,
     search: searchQuery || undefined,
-    sortBy: 'created_at',
-    sortOrder: 'DESC',
   });
 
   const testSeries = testSeriesResponse?.data || [];
   const pagination = testSeriesResponse?.pagination;
 
-  const handleTestSeriesSelect = (series: TestSeries) => {
-    // Navigate to categories list for this test series
+  const handleTestSeriesSelect = (series: DynamicTestSeries) => {
+    // Navigate to categories list for this test series using new dynamic structure
     router.push({
       pathname: '/test/series-detail',
       params: {
-        seriesId: series.id.toString(), // Convert to string for API compatibility
+        seriesUuid: series.uuid, // Use UUID instead of ID
         title: series.name || series.title || 'Test Series',
       },
     });
   };
 
-  const handlePurchase = (series: TestSeries) => {
+  const handlePurchase = (series: DynamicTestSeries) => {
     router.push({
       pathname: '/payment',
       params: {

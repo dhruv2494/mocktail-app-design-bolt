@@ -20,13 +20,20 @@ import {
   QuizQuestion,
   QuizSession
 } from '@/store/api/quizApi';
+import { 
+  useGetDynamicQuestionsQuery,
+  DynamicQuestion
+} from '@/store/api/dynamicHierarchyApi';
 
 export default function QuizScreen() {
   console.log('🎮 Quiz Screen Component Mounted');
   const params = useLocalSearchParams();
   console.log('🎮 Raw params from router:', params);
-  const { testId, seriesId, testType, title } = params;
+  
+  // Support both old test-based and new category-based quiz
+  const { testId, seriesId, testType, title, categoryUuid, categoryName, seriesUuid, language } = params;
   console.log('🎮 Extracted - testId:', testId, 'seriesId:', seriesId, 'title:', title);
+  console.log('🎮 Dynamic - categoryUuid:', categoryUuid, 'seriesUuid:', seriesUuid, 'categoryName:', categoryName);
   
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [selectedLanguage, setSelectedLanguage] = useState('English');
@@ -55,7 +62,7 @@ export default function QuizScreen() {
   const [pauseResumeTest] = usePauseResumeTestMutation();
   const [submitTest, { isLoading: submittingTest }] = useSubmitTestMutation();
   
-  // Get test information
+  // Get test information for old test-based approach
   console.log('🔍 Quiz component - testId:', testId);
   console.log('🔍 Quiz component - all params:', params);
   
@@ -63,11 +70,21 @@ export default function QuizScreen() {
     skip: !testId,
   });
   
+  // Get questions for dynamic hierarchy approach
+  const { data: dynamicQuestionsData, isLoading: loadingDynamicQuestions } = useGetDynamicQuestionsQuery({
+    categoryUuid: categoryUuid as string,
+    language: (language as 'english' | 'gujarati') || 'english',
+    shuffle: true
+  }, {
+    skip: !categoryUuid,
+  });
+  
   console.log('🔍 Test data query - loading:', loadingTest);
   console.log('🔍 Test data query - data:', testData);
-  console.log('🔍 Test data query - error:', testError);
+  console.log('🔍 Dynamic questions - loading:', loadingDynamicQuestions);
+  console.log('🔍 Dynamic questions - data:', dynamicQuestionsData);
   
-  // Get test questions (will be fetched after starting test)
+  // Get test questions (will be fetched after starting test) - old approach
   const { data: questionsData, isLoading: loadingQuestions } = useGetTestQuestionsQuery(testId as string, {
     skip: !testId || !session,
   });
@@ -229,6 +246,67 @@ export default function QuizScreen() {
     initializeTest();
   }, [testData, testId, selectedLanguage, isAuthenticated, token]);
 
+  // Initialize quiz for dynamic hierarchy approach
+  useEffect(() => {
+    const initializeDynamicQuiz = async () => {
+      console.log('🎮 Dynamic Quiz Check:', {
+        categoryUuid,
+        hasData: !!dynamicQuestionsData?.data,
+        questionsCount: dynamicQuestionsData?.data?.questions?.length,
+        fullData: dynamicQuestionsData
+      });
+      
+      if (!categoryUuid || !dynamicQuestionsData?.data) return;
+      
+      console.log('🚀 Initializing dynamic category quiz');
+      console.log('📝 Dynamic questions raw data:', dynamicQuestionsData.data.questions);
+      console.log('📊 First question structure:', dynamicQuestionsData.data.questions[0]);
+      
+      // Convert dynamic questions to quiz format
+      const convertedQuestions: QuizQuestion[] = dynamicQuestionsData.data.questions.map((q: DynamicQuestion) => ({
+        id: q.id,
+        uuid: q.uuid,
+        question_text: q.question_text,
+        question_text_gujarati: q.question_text_gujarati,
+        options: q.options || {
+          A: q.option_a,
+          B: q.option_b,
+          C: q.option_c,
+          D: q.option_d,
+        },
+        correct_answer: q.correct_answer,
+        explanation: q.explanation,
+        explanation_gujarati: q.explanation_gujarati,
+        marks: q.marks,
+        time_limit: 60, // Default 1 minute per question
+        difficulty: 'medium',
+        subject: dynamicQuestionsData.data.category.name,
+        topic: dynamicQuestionsData.data.category.name,
+        created_at: q.created_at,
+        updated_at: q.updated_at,
+      }));
+      
+      setQuestions(convertedQuestions);
+      console.log('✅ Questions set for dynamic quiz:', convertedQuestions.length);
+      console.log('🔍 First converted question:', convertedQuestions[0]);
+      console.log('🔍 First question options:', convertedQuestions[0]?.options);
+      
+      // Set test info from category data
+      setTestInfo({
+        title: categoryName || dynamicQuestionsData.data.category.name,
+        description: dynamicQuestionsData.data.category.description,
+        duration_minutes: convertedQuestions.length * 1, // 1 minute per question
+        total_marks: convertedQuestions.reduce((total, q) => total + q.marks, 0),
+        total_questions: convertedQuestions.length,
+      });
+      
+      // Set timer for category quiz (1 minute per question)
+      setTimeRemaining(convertedQuestions.length * 60);
+    };
+    
+    initializeDynamicQuiz();
+  }, [dynamicQuestionsData, categoryUuid, categoryName]);
+
   // Load questions after session is created
   useEffect(() => {
     if (questionsData?.data?.questions) {
@@ -275,9 +353,24 @@ export default function QuizScreen() {
   };
 
   const handleAnswerSelect = async (option: 'A' | 'B' | 'C' | 'D') => {
-    if (!session || !questions[currentQuestion]) return;
+    console.log('🎯 Answer select triggered:', {
+      option,
+      currentQuestion,
+      hasQuestion: !!questions[currentQuestion],
+      session: !!session,
+      categoryUuid
+    });
     
-    const questionId = questions[currentQuestion].id;
+    // Allow answer selection for both session-based and category-based quizzes
+    if (!questions[currentQuestion] || (!session && !categoryUuid)) {
+      console.log('❌ Answer select blocked - missing requirements');
+      return;
+    }
+    
+    const currentQuestionData = questions[currentQuestion];
+    console.log('📝 Current question data:', currentQuestionData);
+    
+    const questionId = currentQuestionData.id;
     
     // Update local state immediately for better UX
     setSelectedAnswers(prev => ({
@@ -290,7 +383,8 @@ export default function QuizScreen() {
     console.log('💾 Answer selected (not saved to backend yet):', {
       questionId,
       option,
-      sessionId: session.uuid
+      sessionId: session?.uuid || 'category-quiz',
+      categoryUuid: categoryUuid
     });
     
     // Uncomment when backend is ready:
@@ -308,7 +402,7 @@ export default function QuizScreen() {
   };
 
   const handleFlagQuestion = async () => {
-    if (!session || !questions[currentQuestion]) return;
+    if (!questions[currentQuestion] || (!session && !categoryUuid)) return;
     
     const questionId = questions[currentQuestion].id;
     const isFlagged = flaggedQuestions.has(questionId.toString());
@@ -329,7 +423,7 @@ export default function QuizScreen() {
     console.log('🚩 Question flagged (not saved to backend yet):', {
       questionId,
       flagged: !isFlagged,
-      sessionId: session.uuid
+      sessionId: session?.uuid || 'category-quiz'
     });
     
     // Uncomment when backend is ready:
@@ -351,7 +445,7 @@ export default function QuizScreen() {
     
     try {
       const result = await pauseResumeTest({
-        session_uuid: session.uuid,
+        session_uuid: session?.uuid || 'category-quiz',
         action: isPaused ? 'resume' : 'pause',
       }).unwrap();
       
@@ -368,9 +462,9 @@ export default function QuizScreen() {
     console.log('🎯 Current session:', session);
     console.log('🎯 Questions length:', questions.length);
     
-    if (!session) {
-      console.log('❌ No session found, cannot submit');
-      Alert.alert('Error', 'Test session not initialized. Please try again.');
+    if (!session && !categoryUuid) {
+      console.log('❌ No session or category found, cannot submit');
+      Alert.alert('Error', 'Quiz not properly initialized. Please try again.');
       return;
     }
 
@@ -411,7 +505,7 @@ export default function QuizScreen() {
               console.log('🎯 Mock results:', result.data);
               console.log('📍 About to navigate to results screen');
               console.log('📍 Navigation params:', {
-                sessionId: session.uuid,
+                sessionId: session?.uuid || 'category-quiz',
                 score: result.data.total_score.toString(),
                 percentage: result.data.percentage.toString(),
                 passed: result.data.passed.toString(),
@@ -435,15 +529,17 @@ export default function QuizScreen() {
               console.log('Current router:', router);
               
               const navigationParams = {
-                  sessionId: session.uuid,
+                  sessionId: session?.uuid || 'category-quiz',
                   score: result.data.total_score.toString(),
                   percentage: result.data.percentage.toString(),
                   passed: result.data.passed.toString(),
                   correctAnswers: result.data.correct_answers.toString(),
                   wrongAnswers: result.data.wrong_answers.toString(),
                   unanswered: result.data.unanswered.toString(),
-                  testTitle: testInfo?.title || title || 'Quiz',
+                  testTitle: testInfo?.title || title || categoryName || 'Quiz',
                   testId: testId,
+                  categoryUuid: categoryUuid,
+                  categoryName: categoryName,
               };
               
               console.log('Navigation params:', navigationParams);
@@ -488,7 +584,7 @@ export default function QuizScreen() {
       <View style={[styles.centerContainer]}>
         <ActivityIndicator size="large" color={Colors.primary} />
         <Text style={[styles.loadingText, { color: Colors.textPrimary }]}>
-          {startingTest ? 'Starting Test...' : loadingTest ? 'Loading Test...' : loadingQuestions ? 'Loading Questions...' : 'Loading...'}
+          {startingTest ? 'Starting Test...' : loadingTest ? 'Loading Test...' : loadingQuestions ? 'Loading Questions...' : loadingDynamicQuestions ? `Loading Questions from Category: ${categoryUuid}` : 'Loading...'}
         </Text>
       </View>
     </SafeAreaView>
@@ -577,7 +673,7 @@ export default function QuizScreen() {
   console.log('🔍 Quiz Debug - questions.length:', questions.length);
 
   // Show loading state while loading test or starting test
-  if (loadingTest || startingTest || loadingQuestions) {
+  if (loadingTest || startingTest || loadingQuestions || loadingDynamicQuestions) {
     console.log('🔍 Quiz Debug - Showing loader: API loading');
     return renderLoadingState();
   }
@@ -629,13 +725,33 @@ export default function QuizScreen() {
   //   );
   // }
 
-  // Show error state if there's no session or questions after loading
-  if (!session && !loadingTest && !startingTest) {
+  // Show error state if there's no session or questions after loading (for test-based approach)
+  if (!session && !loadingTest && !startingTest && !categoryUuid) {
     return renderErrorState('Failed to start the test session.');
   }
 
-  if (questions.length === 0 && session) {
-    return renderErrorState('No questions available for this quiz.');
+  // Check for questions availability (for both approaches)
+  console.log('🎮 Final Render Check:', {
+    questionsLength: questions.length,
+    session: !!session,
+    categoryUuid,
+    loadingQuestions,
+    loadingDynamicQuestions
+  });
+  
+  if (questions.length === 0 && (session || categoryUuid) && !loadingQuestions && !loadingDynamicQuestions) {
+    console.log('❌ Showing no questions error');
+    return renderErrorState(
+      `No questions available for this quiz.
+      
+Debug Info:
+- Questions: ${questions.length}
+- Category UUID: ${categoryUuid}
+- Has Dynamic Data: ${!!dynamicQuestionsData?.data}
+- Questions in Data: ${dynamicQuestionsData?.data?.questions?.length || 0}
+- Loading Dynamic: ${loadingDynamicQuestions}
+- Session: ${!!session}`
+    );
   }
 
   if (showGrid) {
@@ -644,6 +760,16 @@ export default function QuizScreen() {
         {renderQuestionGrid()}
       </SafeAreaView>
     );
+  }
+
+  // Don't render the main quiz until we have questions loaded
+  if (questions.length === 0) {
+    return renderLoadingState();
+  }
+
+  // Don't render if currentQuestion index is invalid
+  if (!questions[currentQuestion]) {
+    return renderLoadingState();
   }
 
   return (

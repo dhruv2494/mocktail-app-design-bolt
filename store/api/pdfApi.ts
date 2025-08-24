@@ -4,8 +4,12 @@ import { baseQueryWithReauth } from './baseQuery';
 export interface PDFCategory {
   id: number;
   name: string;
+  slug: string;
   description?: string;
-  is_active: boolean;
+  icon?: string;
+  color?: string;
+  sort_order: number;
+  is_active?: boolean;
 }
 
 export interface PDF {
@@ -55,6 +59,11 @@ export interface PDFDownloadResponse {
     filename: string;
     size: number;
   };
+}
+
+export interface PDFCategoriesResponse {
+  success: boolean;
+  data: PDFCategory[];
 }
 
 export interface PDFFiltersResponse {
@@ -147,9 +156,9 @@ export const pdfApi = createApi({
     }),
 
     // Get PDF categories
-    getPDFCategories: builder.query<PDFCategory[], void>({
+    getPDFCategories: builder.query<PDFCategoriesResponse, void>({
       query: () => ({
-        url: '/pdf-categories',
+        url: '/pdfs/categories',
         method: 'GET',
       }),
       providesTags: ['PDFCategory'],

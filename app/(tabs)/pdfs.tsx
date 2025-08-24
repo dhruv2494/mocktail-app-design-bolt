@@ -6,7 +6,7 @@ import { router } from 'expo-router';
 import { getTheme } from '@/theme';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { useGetPDFsQuery, useIncrementPDFViewMutation, PDFListParams } from '@/store/api/pdfApi';
+import { useGetPDFsQuery, useGetPDFCategoriesQuery, useIncrementPDFViewMutation, PDFListParams } from '@/store/api/pdfApi';
 import { PDFListSkeleton, CategorySkeleton, SearchSkeleton } from '@/components/shared/SkeletonLoader';
 
 export default function PDFsScreen() {
@@ -37,15 +37,36 @@ export default function PDFsScreen() {
     refetch,
   } = useGetPDFsQuery(queryParams);
 
+  const {
+    data: categoriesResponse,
+    isLoading: categoriesLoading,
+    error: categoriesError,
+  } = useGetPDFCategoriesQuery();
+
   const [incrementPDFView] = useIncrementPDFViewMutation();
 
-  const categories = [
-    { key: 'All', label: t.pdfs?.categories?.all || 'All' },
-    { key: 'Study Material', label: t.pdfs?.categories?.studyMaterial || 'Study Material' },
-    { key: 'Previous Papers', label: t.pdfs?.categories?.previousPapers || 'Previous Papers' },
-    { key: 'Solutions', label: t.pdfs?.categories?.solutions || 'Solutions' },
-    { key: 'Notes', label: t.pdfs?.categories?.notes || 'Notes' }
-  ];
+  const categories = useMemo(() => {
+    const defaultCategories = [{ key: 'All', label: t.pdfs?.categories?.all || 'All' }];
+    
+    if (categoriesResponse?.data) {
+      const dynamicCategories = categoriesResponse.data.map(category => ({
+        key: category.name,
+        label: category.name,
+        color: category.color,
+        icon: category.icon
+      }));
+      return [...defaultCategories, ...dynamicCategories];
+    }
+    
+    // Fallback to hardcoded categories if API fails
+    return [
+      ...defaultCategories,
+      { key: 'Study Material', label: t.pdfs?.categories?.studyMaterial || 'Study Material' },
+      { key: 'Previous Papers', label: t.pdfs?.categories?.previousPapers || 'Previous Papers' },
+      { key: 'Solutions', label: t.pdfs?.categories?.solutions || 'Solutions' },
+      { key: 'Notes', label: t.pdfs?.categories?.notes || 'Notes' }
+    ];
+  }, [categoriesResponse, t.pdfs?.categories]);
 
   const pdfData = pdfResponse?.data || [];
   const pagination = pdfResponse?.pagination;
@@ -135,7 +156,7 @@ export default function PDFsScreen() {
 
       {/* Categories */}
       <View style={styles.categoriesContainer}>
-        {isLoading && !pdfData.length ? (
+        {categoriesLoading ? (
           <CategorySkeleton />
         ) : (
           <ScrollView 
@@ -147,7 +168,8 @@ export default function PDFsScreen() {
                 key={category.key}
                 style={[
                   styles.categoryChip,
-                  selectedCategory === category.key && styles.categoryChipActive
+                  selectedCategory === category.key && styles.categoryChipActive,
+                  category.color && selectedCategory === category.key && { backgroundColor: category.color }
                 ]}
                 onPress={() => handleCategoryChange(category.key)}
               >

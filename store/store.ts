@@ -9,6 +9,7 @@ import { testManagementApi } from './api/testManagementApi';
 import { quizApi } from './api/quizApi';
 import { notificationsApi } from './api/notificationsApi';
 import { userApi } from './api/userApi';
+import { dynamicHierarchyApi } from './api/dynamicHierarchyApi';
 
 export const store = configureStore({
   reducer: {
@@ -21,6 +22,7 @@ export const store = configureStore({
     [quizApi.reducerPath]: quizApi.reducer,
     [notificationsApi.reducerPath]: notificationsApi.reducer,
     [userApi.reducerPath]: userApi.reducer,
+    [dynamicHierarchyApi.reducerPath]: dynamicHierarchyApi.reducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
@@ -35,7 +37,8 @@ export const store = configureStore({
       testManagementApi.middleware,
       quizApi.middleware,
       notificationsApi.middleware,
-      userApi.middleware
+      userApi.middleware,
+      dynamicHierarchyApi.middleware
     ),
 });
 

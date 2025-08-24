@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Mocktale Academy",
-    "slug": "Mocktale Academy",
+    "slug": "mocktale-academy",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/MockTale.jpg",
@@ -9,7 +9,15 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": false,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.mocktale.mocktaleacademy"
+    },
+    "android": {
+      "package": "com.mocktale.mocktaleacademy",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -29,16 +37,8 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "0c6ce86e-f047-4e02-9de7-cee1b0146cff"
+        "projectId": "d1180342-df97-40e7-a067-4c9f03364a82"
       }
-    },
-    "android": {
-      "package": "com.hello2494.boltexponativewind",
-      "permissions": [
-        "android.permission.CAMERA",
-        "android.permission.RECORD_AUDIO"
-      ]
-    },
-    "owner": "wegacano"
+    }
   }
 }
