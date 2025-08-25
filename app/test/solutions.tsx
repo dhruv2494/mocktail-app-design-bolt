@@ -365,7 +365,7 @@ export default function SolutionsScreen() {
   }
 
   // Show loading state
-  if (!useMockData && loadingReview) {
+  if (!useMockData && isLoading) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.centerContainer}>
@@ -379,7 +379,7 @@ export default function SolutionsScreen() {
   }
 
   // Show error state
-  if (!useMockData && reviewError) {
+  if (!useMockData && error) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.centerContainer}>
